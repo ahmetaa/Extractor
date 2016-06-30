@@ -3,6 +3,7 @@
 # L: Line regular expression. if matches, line is ignored.
 # P: Page regexp
 # W: word regexp. all matches will be replaced with space.
+# E: Extractor type
 
 global
 
@@ -17,6 +18,7 @@ L:^[ ]*[0-9]+\.[0-9]+%
 
 forum.antoloji.com
 
+E:EVERYTHING
 I:uye
 # `nedir` sayfalarında iyi veri var ama bazı kelimeler eklerinden bölünmüş
 # I:nedir
@@ -50,6 +52,7 @@ W:\([ 0-9.:]+\)
 
 forum.memurlar.net
 
+E:EVERYTHING
 I:uye.memurlar.net
 I:kategori
 L:\d{4} \d{2}:\d{2}$
@@ -64,10 +67,16 @@ L:http
 
 
 www.tvyorumlari.com
+
+E:EVERYTHING
 L:Yorum Popülerlik
 L:^Aktif Kullanıcılar
 
+
+
 tv.yazarokur.com
+
+E:EVERYTHING
 L:->$
 L:!!$
 L:^TV:
@@ -76,6 +85,8 @@ L:^Film:
 
 
 forum.shiftdelete.net
+
+E:EVERYTHING
 I:member
 I:whoposted
 I:index
@@ -109,7 +120,10 @@ L:tarafından \(
 L:^Bu Mesaj
 L:- forum
 
+
 mobile.donanimhaber.com
+
+E:EVERYTHING
 I:showprofile
 L:^<
 L:Cevap:
@@ -149,6 +163,7 @@ L:^Eski kullanıcı
 
 wowturkey.com
 
+E:EVERYTHING
 I:topicdays
 L:Fotobiyografi
 L:önce -
@@ -169,6 +184,7 @@ W:\[.+?\]
 
 www.duslerforum.net
 
+E:EVERYTHING
 P:Giriş yapmadınız yada Yetkiniz
 P:Copyright
 L:Adresimiz :
@@ -177,11 +193,13 @@ L:Alt ForumLar :
 
 www.formistan.com
 
+E:EVERYTHING
 L:Powered by
 L:Tüm Zamanlar GMT
 
 www.forumotomobil.com
 
+E:EVERYTHING
 L:^Linkleri Sadece Kayıtlı
 L:^Başlık:
 L:^Gönderen:
@@ -215,6 +233,7 @@ W:emoji[0-9]+
 
 www.sikayetvar.com
 
+E:EVERYTHING
 I+:detay
 I+:tesekkur
 L:\|
@@ -246,6 +265,7 @@ L:^Markamız
 
 www.nurturia.com.tr
 
+E:EVERYTHING
 I:ReturnUrl
 I:people
 L:[0-9]+H$
@@ -270,13 +290,15 @@ L:\([0-9]+\)$
 L:http
 
 
-iha.com.tr
+www.iha.com.tr
 
+E:ARTICLE
 L:\d{2}:\d{2}$
 L:[<]|[>]
 
 www.hukuki.net
 
+E:EVERYTHING
 I:member
 I:list
 I:forumdisplay
@@ -299,6 +321,7 @@ L:konu bulunmuştur
 
 www.kadinlarkulubu.com
 
+E:EVERYTHING
 I:gallery
 I:member
 I:title
@@ -329,6 +352,7 @@ W:\[.+?\]
 
 www.yorumla.com
 
+E:EVERYTHING
 I:UyeOl
 L:^Katıl
 L:Kişi$
@@ -338,3 +362,8 @@ L:Puan verildi$
 L:Puan verdi$
 L:-$
 
+www.dunya.com
+E:ARTICLE
+
+www.sabah.com.tr
+E:ARTICLE
