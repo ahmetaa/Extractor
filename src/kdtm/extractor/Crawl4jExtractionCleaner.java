@@ -329,7 +329,7 @@ public class Crawl4jExtractionCleaner {
 //        lookup.saveHistogram(Paths.get("/media/ahmetaa/depo/data/corporas/lookup.histogram"));
 //    }
 
-    private static void reduce(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
+    public static void reduce(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
 
         List<Path> dirs = Lists.newArrayList(Files.walk(sourceRoot)
                 .filter(path -> path.toFile().isDirectory()).iterator());

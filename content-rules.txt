@@ -16,6 +16,15 @@ test
 
 L:^[ ]*[0-9]+\.[0-9]+%
 
+
+www.milliyet.com.tr
+
+E:ARTICLE
+L: Haberleri -
+L:\( permalink \)
+
+
+
 forum.antoloji.com
 
 E:EVERYTHING
@@ -55,6 +64,12 @@ forum.memurlar.net
 E:EVERYTHING
 I:uye.memurlar.net
 I:kategori
+L:&#
+L:\(Bkz
+L:\(bkz\:
+L:\*\*\*
+L:^\*\*
+L:^\-\-\-
 L:\d{4} \d{2}:\d{2}$
 L:kez görüntülendi
 L:defa okundu
@@ -82,6 +97,9 @@ L:!!$
 L:^TV:
 L:^Dizi:
 L:^Film:
+L:^::
+L:]$
+L: Oy$
 
 
 forum.shiftdelete.net
@@ -119,6 +137,9 @@ L:Yorumlarınız$
 L:tarafından \(
 L:^Bu Mesaj
 L:- forum
+L:Üyecik$
+L:Profesör$
+L:Asistan$
 
 
 mobile.donanimhaber.com
@@ -138,6 +159,7 @@ L:IMG_
 L:\|
 L:^\[
 L:^#
+L:\-\>
 L:sayfa$
 L:Sayfa:
 L:Yoruma Git
@@ -160,6 +182,20 @@ L:^Şehir:
 L:mentioned
 L:Güncellendi
 L:^Eski kullanıcı
+L:>>+
+W:\[.+?\]
+W:^-\w+
+W:^-\W+
+W:^@\W
+W:^\d*\-\)
+L:ay önce$
+L:gün önce$
+W:\(Görsel\)
+L:Bütün Soru Başlıkları Silinecektir
+L:Bl\.$
+
+
+
 
 wowturkey.com
 
@@ -181,8 +217,16 @@ L:\([0-9]+\)$
 L:^\[
 L:^%
 W:\[.+?\]
+W:\(Oylama\)
 
-www.duslerforum.net
+
+
+www.ensonhaber.com
+E:ARTICLE
+L:önce$
+
+
+www.duslerforum.org
 
 E:EVERYTHING
 P:Giriş yapmadınız yada Yetkiniz
@@ -190,12 +234,16 @@ P:Copyright
 L:Adresimiz :
 L:Konu bulunmuştur.
 L:Alt ForumLar :
+W:\[Linkleri Görebilmek için ÜYE Olmalısınız! Hemen ÜYE OL! \]
 
 www.formistan.com
 
 E:EVERYTHING
 L:Powered by
 L:Tüm Zamanlar GMT
+L:New Member$
+L:Bölüm Özeti$
+L:şu konuyu görüntülerken görüldü\:$
 
 www.forumotomobil.com
 
@@ -228,6 +276,7 @@ L:Üye$
 L:^\[
 W::[^ ]+:
 W:emoji[0-9]+
+L:Gönderen\:
 
 
 
@@ -288,6 +337,7 @@ L:^Yorumlar
 L:\[[0-9]+\]$
 L:\([0-9]+\)$
 L:http
+L:İleti$
 
 
 www.iha.com.tr
@@ -367,3 +417,4 @@ E:ARTICLE
 
 www.sabah.com.tr
 E:ARTICLE
+

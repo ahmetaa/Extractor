@@ -18,6 +18,9 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static kdtm.extractor.Crawl4jExtractionCleaner.reduce;
+
+
 public class Extractor {
 
     Map<String, ContentPatterns> patterns;
@@ -31,7 +34,6 @@ public class Extractor {
         Path inRoot = Paths.get("/home/sila/projects/Extractor/root");
         Path outRoot = Paths.get("/home/sila/projects/Extractor/outExtractor");
         Extractor e = new Extractor();
-
         e.extract(inRoot, outRoot);
     }
 
