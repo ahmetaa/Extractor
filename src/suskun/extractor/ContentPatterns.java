@@ -17,11 +17,11 @@ import static suskun.extractor.Crawl4jExtractionCleaner.*;
 
 public class ContentPatterns {
     String source;
-    List<Pattern> linePatterns = new ArrayList<>();
-    List<Pattern> pagePatterns = new ArrayList<>();
-    List<Pattern> urlRemovePatterns = new ArrayList<>();
-    List<Pattern> urlAcceptPatterns = new ArrayList<>();
-    List<Pattern> wordPattern = new ArrayList<>();
+    Set<Pattern> linePatterns = new LinkedHashSet<>();
+    Set<Pattern> pagePatterns = new LinkedHashSet<>();
+    Set<Pattern> urlRemovePatterns = new LinkedHashSet<>();
+    Set<Pattern> urlAcceptPatterns = new LinkedHashSet<>();
+    Set<Pattern> wordPattern = new LinkedHashSet<>();
     String extractor ;
 
     Map<Pattern, String> replacePatterns = new HashMap<>();
@@ -38,7 +38,7 @@ public class ContentPatterns {
                 case "E":
                     patterns.extractor = patternStr;
                     break;
-                case "I":
+                case "I-":
                     patterns.urlRemovePatterns.add(Pattern.compile(patternStr));
                     break;
                 case "P":
@@ -62,6 +62,16 @@ public class ContentPatterns {
         return patterns;
     }
 
+    public void merge(ContentPatterns patterns)  {
+        this.getUrlRemovePatterns().addAll(patterns.getUrlRemovePatterns());
+        this.getUrlAcceptPatterns().addAll(patterns.getUrlAcceptPatterns());
+        this.getLinePatterns().addAll(patterns.getLinePatterns());
+        this.getPagePatterns().addAll(patterns.getPagePatterns());
+        this.getWordPattern().addAll(patterns.getWordPattern());
+        this.getReplacePatterns().putAll(patterns.getReplacePatterns());
+    }
+
+
     public static Map<String, ContentPatterns> fromFile(Path path) throws IOException {
 
         Map<String, ContentPatterns> result = new HashMap<>();
@@ -75,8 +85,17 @@ public class ContentPatterns {
             String meta = textConsumer.current().trim();
             textConsumer.advance();
             List<String> ruleData = textConsumer.moveUntil(s -> s.trim().length() > 0 && !s.contains(":"));
-            result.put(meta, ContentPatterns.fromList(meta, ruleData));
+            ContentPatterns patterns = ContentPatterns.fromList(meta, ruleData);
+            result.put(meta, patterns);
+            result.put(meta.replaceAll("www\\.",""), patterns);
         }
+
+        ContentPatterns global = result.get("global");
+        if(global==null) {
+            return result;
+        }
+
+        result.keySet().forEach(s->result.get(s).merge(global));
 
         return result;
     }
@@ -189,4 +208,35 @@ public class ContentPatterns {
         return reduced;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public Set<Pattern> getLinePatterns() {
+        return linePatterns;
+    }
+
+    public Set<Pattern> getPagePatterns() {
+        return pagePatterns;
+    }
+
+    public Set<Pattern> getUrlRemovePatterns() {
+        return urlRemovePatterns;
+    }
+
+    public Set<Pattern> getUrlAcceptPatterns() {
+        return urlAcceptPatterns;
+    }
+
+    public Set<Pattern> getWordPattern() {
+        return wordPattern;
+    }
+
+    public String getExtractor() {
+        return extractor;
+    }
+
+    public Map<Pattern, String> getReplacePatterns() {
+        return replacePatterns;
+    }
 }
