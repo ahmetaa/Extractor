@@ -1,9 +1,9 @@
-package kdtm.extractor;
+package suskun.extractor;
 
-import orhun.core.io.Strings;
-import orhun.core.text.Regexps;
-import orhun.core.text.TextConsumer;
-import orhun.core.text.TextUtil;
+import zemberek.core.io.Strings;
+import zemberek.core.text.Regexps;
+import zemberek.core.text.TextConsumer;
+import zemberek.core.text.TextUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,11 +13,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static kdtm.extractor.Crawl4jExtractionCleaner.*;
+import static suskun.extractor.Crawl4jExtractionCleaner.*;
 
-/**
- * Created by sila on 28.06.2016.
- */
 public class ContentPatterns {
     String source;
     List<Pattern> linePatterns = new ArrayList<>();
@@ -185,17 +182,10 @@ public class ContentPatterns {
 
         for (String s : reduced) {
             if (s.length() > 20 && badlyTypedTurkish(s)) {
-                //  System.out.println(s);
                 next.remove(s);
             }
         }
         reduced = new LinkedHashSet<>(next);
-//            if(extractorPattern.equals("ARTICLE")){
-//                extractor = "ARTICLE";
-//            } else if(extractorPattern.equals("EVERYTHING")){
-//                extractor = "EVERYTHING";
-//            }
-
         return reduced;
     }
 

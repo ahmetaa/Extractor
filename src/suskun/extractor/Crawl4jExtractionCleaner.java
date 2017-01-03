@@ -1,15 +1,13 @@
-package kdtm.extractor;
+package suskun.extractor;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.hash.Hashing;
 import kdtm.text.html.HtmlCleaner;
-
-import orhun.core.io.Strings;
-import orhun.core.logging.Log;
-import orhun.core.text.Regexps;
-import orhun.core.text.TextConsumer;
-import orhun.core.text.TextUtil;
+import zemberek.core.logging.Log;
+import zemberek.core.text.Regexps;
+import zemberek.core.text.TextConsumer;
+import zemberek.core.text.TextUtil;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -27,7 +25,7 @@ public class Crawl4jExtractionCleaner {
     public static void main(String[] args) throws IOException {
 
 
-        reduce(Paths.get("/home/sila/projects/Extractor/outExtractor"), Paths.get("/home/sila/projects/Extractor/outCrawl4j"), false);
+        reduce(Paths.get("outExtractor"), Paths.get("outCrawl"), false);
 
     }
 
@@ -209,7 +207,7 @@ public class Crawl4jExtractionCleaner {
 
     // simple heuristic for catching badly typed Turkish sentences.
     // This checks if sentence is written without Turkish characters,
-    // or 'ı' is used instead of 'ı'
+    // or 'ı' is used instead of 'i'
     // this kind of mistakes are pretty common in forum like places.
     static public boolean badlyTypedTurkish(String s) {
         int dotlessICount = TextUtil.countChars(s, 'ı');
@@ -281,7 +279,7 @@ public class Crawl4jExtractionCleaner {
         @Override
         public int hashCode() {
             long h = contentHash();
-            return (int) ((h & 0xffffffffl) ^ (h >> 32));
+            return (int) ((h & 0xffffffffL) ^ (h >> 32));
         }
 
 

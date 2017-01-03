@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="extractor" default="compile" basedir=".">
+
+    <property name="src.dir" location="src"/>
+    <property name="dist.dir" location="dist"/>
+    <property name="jar.dir" location="dist/jar"/>
+    <property name="build.dir" location="build"/>
+    <property file="build.properties"/>
+
+    <!--   runtime libraries -->
+    <path id="classpath.runtime">
+        <fileset dir="lib/runtime"/>
+    </path>
+
+    <!--  compile -->
+    <target name="compile">
+        <delete dir="${build.dir}"/>
+        <mkdir dir="${build.dir}"/>
+        <javac
+                destdir="${build.dir}"
+                classpathref="classpath.runtime"
+                debug="true"
+                debuglevel="vars,lines,source">
+            <src path="${src.dir}"/>
+
+        </javac>
+        <copy todir="${build.dir}" includeemptydirs="false">
+            <fileset dir="${src.dir}">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="jar" depends="clean, compile">
+        <jar file="${jar.dir}/${name}-${version}.jar">
+            <fileset dir="${build.dir}"/>
+        </jar>
+    </target>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+        <delete dir="${jar.dir}"/>
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+        <mkdir dir="${jar.dir}"/>
+    </target>
+
+</project>

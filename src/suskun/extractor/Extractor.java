@@ -1,24 +1,19 @@
-package kdtm.extractor;
+package suskun.extractor;
 
 
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
-import sun.rmi.runtime.Log;
 
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static kdtm.extractor.Crawl4jExtractionCleaner.reduce;
 
 
 public class Extractor {
@@ -31,8 +26,8 @@ public class Extractor {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         //TODO: fill below
-        Path inRoot = Paths.get("/home/sila/projects/Extractor/root");
-        Path outRoot = Paths.get("/home/sila/projects/Extractor/outExtractor");
+        Path inRoot = Paths.get("root");
+        Path outRoot = Paths.get("out");
         Extractor e = new Extractor();
         e.extract(inRoot, outRoot);
     }
