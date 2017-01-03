@@ -3,7 +3,6 @@ package suskun.extractor;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.hash.Hashing;
-import kdtm.text.html.HtmlCleaner;
 import zemberek.core.logging.Log;
 import zemberek.core.text.Regexps;
 import zemberek.core.text.TextConsumer;
@@ -381,9 +380,9 @@ public class Crawl4jExtractionCleaner {
 //    }
 
     public static String cleanAndNormalize(String input) {
-        return HtmlCleaner.cleanAllHtmlRelated(
-                HtmlCleaner.normalizeQuotesHyphens(
-                        HtmlCleaner.convertAmpresandStrings(
+        return TextUtil.cleanAllHtmlRelated(
+                TextUtil.normalizeQuotesHyphens(
+                        TextUtil.convertAmpresandStrings(
                                 TextUtil.cleanCdataIllegalChars(input, " "))));
     }
 
