@@ -3,10 +3,14 @@ package suskun.extractor;
 
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
+import zemberek.core.text.Regexps;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.file.*;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -18,7 +22,7 @@ import java.util.stream.Collectors;
 
 public class Extractor {
 
-    Map<String, ContentPatterns> patterns;
+    private Map<String, ContentPatterns> patterns;
 
     public Extractor() throws IOException {
         patterns = ContentPatterns.fromFile(Paths.get("content-rules.txt"));
@@ -26,16 +30,19 @@ public class Extractor {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         //TODO: fill below
-        Path inRoot = Paths.get("root");
-        Path outRoot = Paths.get("out");
+        Path inRoot = Paths.get("/media/disk2/crawl/news");
+        Path outRoot = Paths.get("/media/disk2/corpora/raw");
         Extractor e = new Extractor();
+        //e.extract(inRoot, outRoot, Pattern.compile("karar"));
         e.extract(inRoot, outRoot);
     }
 
-    private void extract(final Path inRoot, final Path outRoot) throws IOException, InterruptedException {
+    private void extract(final Path inRoot, final Path outRoot, Pattern pattern) throws IOException, InterruptedException {
         ThreadPoolExecutor es = new ThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LimitedQueue<>(3));
 
-        List<Path> sourcePaths = Files.walk(inRoot, 1).filter(s -> s.toFile().isDirectory()).collect(Collectors.toList());
+        List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
+                s -> s.toFile().isDirectory() && (pattern == null || Regexps.matchesAny(pattern, s.toFile().getName()))
+        ).collect(Collectors.toList());
 
         final Pattern DATE = Pattern.compile("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
 
@@ -66,6 +73,12 @@ public class Extractor {
 
         es.shutdown();
         es.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+
+    }
+
+
+    private void extract(final Path inRoot, final Path outRoot) throws IOException, InterruptedException {
+        extract(inRoot, outRoot, null);
     }
 
     private static final class ExtractorTask implements Runnable {
@@ -74,7 +87,7 @@ public class Extractor {
 
         final Path inDir;
         final Path outFile;
-        final String extractType;
+        String extractType;
 
         ExtractorTask(Path inDir, Path outFile, String extractType) {
             this.inDir = inDir;
@@ -100,6 +113,11 @@ public class Extractor {
                     return;
                 }
             }
+
+            if(extractType == null) {
+                extractType = "ARTICLE";
+            }
+
             try (OutputStream os = Files.newOutputStream(tmp);
                  DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
                 int count = 0;
@@ -130,7 +148,7 @@ public class Extractor {
                     }
                 }
                 Files.move(tmp, outFile);
-                System.out.println("completed : " + inDir + " " + count + " files" +"   extract : "+extractType );
+                System.out.println("completed : " + inDir + " " + count + " files" + "   extract : " + extractType);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

@@ -24,7 +24,7 @@ public class Crawl4jExtractionCleaner {
     public static void main(String[] args) throws IOException {
 
 
-        reduce(Paths.get("outExtractor"), Paths.get("outCrawl"), false);
+        reduce(Paths.get("/media/disk2/corpora/raw"), Paths.get("/media/disk2/corpora/clean"), false);
 
     }
 
@@ -159,18 +159,6 @@ public class Crawl4jExtractionCleaner {
             }
             return reducedPages;
         }
-
-//        public void saveXml(Path path) {
-//            List<CorpusUnit> units = new ArrayList<>();
-//            for (Page page : pages) {
-//                String id = page.source + "-" + page.id;
-//                CorpusUnit unit = new CorpusUnit(id, "title", page.source, new ArrayList<>(page.lines), new Date(), new Date());
-//                units.add(unit);
-//            }
-//            CorpusDocument document = new CorpusDocument(source + "-" + id, units);
-//            document.toXml(path.toFile());
-//        }
-
     }
 
 
@@ -309,30 +297,13 @@ public class Crawl4jExtractionCleaner {
         return sb.toString();
     }
 
-//    private static void generateLookup(Path input, Path output) throws IOException {
-//
-//        List<Path> files = Lists.newArrayList(Files.walk(input, 2)
-//                .filter(path -> path.toFile().isFile()).iterator());
-//
-//        PronunciationCorpusNormalizer.AutoLookup lookup = new PronunciationCorpusNormalizer.AutoLookup();
-//        for (Path file : files) {
-//            PronunciationCorpusNormalizer normalizer = new PronunciationCorpusNormalizer();
-//            PronunciationCorpusNormalizer.AutoLookup lookup1 = normalizer.generateAutoLookup(file, 4);
-//            //Path lmPath = Paths.get("/media/ahmetaa/depo/data/asr/model/language/tr/makine-word-news-100k-kdtm/lm.slm");
-//            //normalizer.checkAutoLookup(output, lmPath);
-//            lookup.add(lookup1);
-//        }
-//        lookup.save(output);
-//        lookup.saveHistogram(Paths.get("/media/ahmetaa/depo/data/corporas/lookup.histogram"));
-//    }
-
     public static void reduce(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
 
         List<Path> dirs = Lists.newArrayList(Files.walk(sourceRoot)
                 .filter(path -> path.toFile().isDirectory()).iterator());
         Files.createDirectories(outRoot);
         Map<String, ContentPatterns> removePatternsMap =
-                ContentPatterns.fromFile(Paths.get("/home/sila/projects/Extractor/content-rules.txt"));
+                ContentPatterns.fromFile(Paths.get("content-rules.txt"));
 
 
         for (Path dir : dirs) {
@@ -358,34 +329,12 @@ public class Crawl4jExtractionCleaner {
         }
     }
 
-//    static void saveCorporaAsXml(Path sourceRoot, Path outRoot) throws IOException {
-//        Files.createDirectories(outRoot);
-//        List<Path> dirs = Lists.newArrayList(Files.walk(sourceRoot)
-//                .filter(path -> path.toFile().isDirectory() && path.toString().contains("wow")).iterator());
-//        for (Path dir : dirs) {
-//
-//            List<Path> files = Lists.newArrayList(Files.walk(dir, 1)
-//                    .filter(path -> path.toFile().isFile()).iterator());
-//            if (files.size() == 0) continue;
-//
-//            for (Path file : files) {
-//                Corpus corpus = Corpus.loadFromCrawl4jExport(dir.toFile().getName(), file);
-//                Log.info(corpus);
-//                Log.info("Total = %d ", corpus.pages.size());
-//                Path corporaDir = outRoot.resolve(corpus.source);
-//                Files.createDirectories(corporaDir);
-//                corpus.saveXml(corporaDir.resolve(corpus.source + "-" + corpus.id + ".xml"));
-//            }
-//        }
-//    }
-
     public static String cleanAndNormalize(String input) {
         return TextUtil.cleanAllHtmlRelated(
                 TextUtil.normalizeQuotesHyphens(
                         TextUtil.convertAmpresandStrings(
                                 TextUtil.cleanCdataIllegalChars(input, " "))));
     }
-
 
     private static void stats(List<Path> dirs) throws IOException {
         int total = 0, unique = 0;

@@ -10,7 +10,9 @@ global
 I-:video
 I-:galeri
 I-:foto-haber
+I-:fotohaber
 I-:webtv
+I-:spor
 
 L:[<]|[>]
 L:\[[0-9]+\]$
@@ -22,6 +24,8 @@ test
 L:^[ ]*[0-9]+\.[0-9]+%
 
 www.aksam.com.tr
+
+www.cnnturk.com
 
 www.cumhuriyet.com.tr
 
@@ -38,7 +42,7 @@ www.haberturk.com
 www.hurriyet.com.tr
 
 www.iha.com.tr
-
+I:yazdir
 E:ARTICLE
 L:\d{2}:\d{2}$
 L:[<]|[>]
@@ -46,7 +50,10 @@ L:[<]|[>]
 www.karar.com
 
 www.milliyet.com.tr
-
+I-:ilan-detay
+I-:uyeno
+I-:indir\.milliyet
+I-:arama
 E:ARTICLE
 L: Haberleri -
 L:\( permalink \)
@@ -56,17 +63,20 @@ www.ntv.com.tr
 www.posta.com.tr
 
 www.sabah.com.tr
+I-:cizerler
 
 I-:namaz-vakitleri
 E:ARTICLE
 
 www.sozcu.com.tr
+I-:amkspor
 
 t24.com.tr
 
 www.zaytung.com
 I-:store\.zaytung\.com
 I-:user
+I-:www2
 
 www.bilim.org
 
@@ -441,3 +451,5 @@ L:Yorum yapıldı$
 L:Puan verildi$
 L:Puan verdi$
 L:-$
+
+
