@@ -22,10 +22,9 @@ import java.util.stream.Collectors;
 public class Crawl4jExtractionCleaner {
 
     public static void main(String[] args) throws IOException {
-
-
-        reduce(Paths.get("/media/disk2/corpora/raw"), Paths.get("/media/disk2/corpora/clean"), false);
-
+        reduce(Paths.get("/media/disk2/corpora/raw"),
+                Paths.get("/media/disk2/corpora/clean"),
+                false);
     }
 
     public static class Corpus {
@@ -91,7 +90,11 @@ public class Crawl4jExtractionCleaner {
             return hashes.size();
         }
 
-        public void saveReduced(ContentPatterns patterns, Path outRoot, boolean onlyContent, boolean removeDuplicatedLines) throws IOException {
+        public void saveReduced(
+                ContentPatterns patterns,
+                Path outRoot,
+                boolean onlyContent,
+                boolean removeDuplicatedLines) throws IOException {
 
             List<Page> reducedPages = getReducedPages(patterns, removeDuplicatedLines);
 
@@ -101,10 +104,12 @@ public class Crawl4jExtractionCleaner {
             try (PrintWriter p = new PrintWriter(resolve.resolve(id).toFile(), "utf-8")) {
                 for (Page reducedPage : reducedPages) {
                     if (!onlyContent) {
-                        p.println(reducedPage.url);
+                        p.println(reducedPage.getDocumentHeader());
                     }
                     p.println(reducedPage.content());
-                    p.println("</doc>");
+                    if(!onlyContent) {
+                        p.println("</doc>");
+                    }
                 }
             }
         }
@@ -215,29 +220,47 @@ public class Crawl4jExtractionCleaner {
         String source;
         String id;
         String url;
+        String crawlDate;
 
         List<String> lines = new ArrayList<>();
 
-        public Page(String source, String id, List<String> lines, String url) {
+        public Page(String source, String id, List<String> lines, String url, String crawlDate) {
             this.source = source;
             this.id = id;
             this.lines = lines;
             this.url = url;
+            this.crawlDate = crawlDate;
+        }
+
+        public String getDocumentHeader() {
+            return "<doc id=\"" + id + "\" source=\"" + source + "\" craw-date=\"" + crawlDate + "\">";
         }
 
         public Page emptyContent() {
-            return new Page(this.source, this.id, Collections.emptyList(), this.url);
+            return new Page(
+                    this.source,
+                    this.id,
+                    Collections.emptyList(),
+                    this.url,
+                    "");
         }
 
+        static Pattern sourcePattern = Pattern.compile("(source=\")(.+?)(\")");
+        static Pattern urlPattern = Pattern.compile("(id=\")(.+?)(\")");
+        static Pattern crawlDatePattern = Pattern.compile("(crawl-date=\")(.+?)(\")");
+
         public static Page fromText(String meta, List<String> pageData) {
-            String id = normalizePercentStrings(meta).replaceAll("^#####|http://|https://", "").replace("www.", "");
-            if (!id.contains("/")) {
-                Log.warn("Cannot identify id form meta: %s", meta);
-                return null;
-            } else {
-                String source = id.substring(0, id.indexOf("/"));
-                return new Page(source, id, pageData, meta);
+
+            String url = Regexps.firstMatch(urlPattern, meta, 2);
+            String id = url.replaceAll("http://|https://","");
+            String source = Regexps.firstMatch(sourcePattern, meta, 2);
+            String crawlDate = Regexps.firstMatch(crawlDatePattern, meta, 2);
+
+            int i = source.lastIndexOf("/");
+            if (i >= 0 && i < source.length()) {
+                source = source.substring(i + 1);
             }
+            return new Page(source, id, pageData, url, crawlDate);
         }
 
         public long contentHash() {
@@ -249,7 +272,7 @@ public class Crawl4jExtractionCleaner {
         }
 
         public Page copy(Collection<String> reduced) {
-            return new Page(this.source, this.id, new ArrayList<>(reduced), this.url);
+            return new Page(this.source, this.id, new ArrayList<>(reduced), this.url, this.crawlDate);
         }
 
         @Override
@@ -304,7 +327,6 @@ public class Crawl4jExtractionCleaner {
         Files.createDirectories(outRoot);
         Map<String, ContentPatterns> removePatternsMap =
                 ContentPatterns.fromFile(Paths.get("content-rules.txt"));
-
 
         for (Path dir : dirs) {
 
