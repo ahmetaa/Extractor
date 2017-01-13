@@ -6,6 +6,7 @@ import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
 import zemberek.core.text.Regexps;
 
 import java.io.*;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -132,9 +133,12 @@ public class Extractor {
                         } else if (extractType.equals("EVERYTHING")) {
                             text = KeepEverythingExtractor.INSTANCE.getText(text);
                         }
-//                        text = DefaultExtractor.INSTANCE.getText(text);
-
-                        mbw.write("<doc id=\"" + inFile.getFileName().toString().replace("%3A", ":").replace("%2F", "/") + "\" source=\"" + inDir.toString().substring(inDir.toString().indexOf("root/") + 5, inDir.toString().indexOf("/data")) + "\" crawl-date=\"" + outFile.toString().substring(outFile.toString().length() - 10) + "\">");
+                        String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
+                        String source = inDir.getParent().getParent().toFile().getName();
+                        String crawlDate = inDir.toFile().getName();
+                        mbw.write("<doc id=\"" + id
+                                + "\" source=\"" + source
+                                + "\" crawl-date=\"" + crawlDate + "\">");
                         mbw.newLine();
                         mbw.write(text);
                         mbw.write("</doc>");
