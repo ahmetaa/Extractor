@@ -39,7 +39,7 @@ public class Extractor {
     }
 
     private void extract(final Path inRoot, final Path outRoot, Pattern pattern) throws IOException, InterruptedException {
-        ThreadPoolExecutor es = new ThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LimitedQueue<>(3));
+        ThreadPoolExecutor es = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LimitedQueue<>(3));
 
         List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
                 s -> s.toFile().isDirectory() && (pattern == null || Regexps.matchesAny(pattern, s.toFile().getName()))
@@ -53,19 +53,21 @@ public class Extractor {
             Path data = sourceDir.resolve("data");
             if (!data.toFile().exists())
                 continue;
-            List<Path> days = Files.walk(data, 1).filter(s -> s.toFile().isDirectory()).collect(Collectors.toList());
+            List<Path> days = Files
+                    .walk(data, 1)
+                    .filter(s -> s.toFile().isDirectory())
+                    .collect(Collectors.toList());
             for (Path day : days) {
                 if (!DATE.matcher(day.toFile().getName()).matches())
                     continue;
-                Path relative = inRoot.relativize(day);
-
                 String extractString = null;
                 if (patterns.containsKey(source)) {
                     extractString = patterns.get(source).extractor;
                 }
-                String rel1 = relative.toString().substring(0, relative.toString().indexOf("data"));
-                String rel2 = relative.toString().substring(relative.toString().indexOf("/data") + 6);
-                Path outFile = outRoot.resolve(rel1 + rel2);
+                Path outDir = outRoot.resolve(sourceDir.toFile().getName());
+                Files.createDirectories(outDir);
+                Path outFile = outDir.resolve(day.toFile().getName());
+                System.out.println("Processing " + day + " to " + outFile);
                 if (Files.notExists(outFile)) {
                     es.submit(new ExtractorTask(day, outFile, extractString));
                 }
@@ -99,12 +101,7 @@ public class Extractor {
 
         @Override
         public void run() {
-            try {
-                Files.createDirectories(outFile.getParent());
-            } catch (IOException ex) {
-                System.err.println(ex.toString());
-                return;
-            }
+
             Path tmp = Paths.get(outFile.toString() + ".tmp");
             if (Files.exists(tmp)) {
                 try {
@@ -115,7 +112,7 @@ public class Extractor {
                 }
             }
 
-            if(extractType == null) {
+            if (extractType == null) {
                 extractType = "ARTICLE";
             }
 
@@ -148,6 +145,7 @@ public class Extractor {
                         os.write(baos.toByteArray());
                         count++;
                     } catch (Exception aex) {
+                        aex.printStackTrace();
                         System.err.println("Exception in file " + inFile);
                     }
                 }

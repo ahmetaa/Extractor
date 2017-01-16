@@ -191,10 +191,10 @@ public class Crawl4jExtractionCleaner {
         return (d * 1d) / s.length();
     }
 
-    static String turkishChars = "[çğıöşüÇŞĞÜÖİ]";
-    static char[] turkishCharArray = turkishChars.toCharArray();
+    private static String turkishChars = "[çğıöşüÇŞĞÜÖİ]";
+    private static char[] turkishCharArray = turkishChars.toCharArray();
 
-    static Pattern turkishCharsPattern = Pattern.compile(turkishChars);
+    private static Pattern turkishCharsPattern = Pattern.compile(turkishChars);
 
 
     // simple heuristic for catching badly typed Turkish sentences.
@@ -291,12 +291,9 @@ public class Crawl4jExtractionCleaner {
             long h = contentHash();
             return (int) ((h & 0xffffffffL) ^ (h >> 32));
         }
-
-
     }
 
-    static Pattern URL_PERCENT_PATTERN = Pattern.compile("[%][A-Fa-f0-9]{2}");
-
+    private static Pattern URL_PERCENT_PATTERN = Pattern.compile("[%][A-Fa-f0-9]{2}");
 
     /**
      * Converts a string like
