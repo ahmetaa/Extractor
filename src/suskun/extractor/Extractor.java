@@ -1,6 +1,7 @@
 package suskun.extractor;
 
 
+import com.google.common.base.Splitter;
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
 import zemberek.core.text.Regexps;
@@ -12,6 +13,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,15 +33,21 @@ public class Extractor {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         //TODO: fill below
-        Path inRoot = Paths.get("/media/disk2/crawl/news");
-        Path outRoot = Paths.get("/media/disk2/corpora/raw");
+        Path inRoot = Paths.get("/media/data/crawl/news");
+        Path outRoot = Paths.get("/media/data/corpora/raw2");
         Extractor e = new Extractor();
-        //e.extract(inRoot, outRoot, Pattern.compile("karar"));
-        e.extract(inRoot, outRoot);
+        e.extract(inRoot, outRoot, Pattern.compile("cnn"));
+        // e.extract(inRoot, outRoot);
     }
 
     private void extract(final Path inRoot, final Path outRoot, Pattern pattern) throws IOException, InterruptedException {
-        ThreadPoolExecutor es = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LimitedQueue<>(3));
+        // TODO: system should process files multithreaded, not directories.
+        ThreadPoolExecutor es = new ThreadPoolExecutor(
+                10,
+                10,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LimitedQueue<>(5));
 
         List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
                 s -> s.toFile().isDirectory() && (pattern == null || Regexps.matchesAny(pattern, s.toFile().getName()))
@@ -96,7 +104,6 @@ public class Extractor {
             this.inDir = inDir;
             this.outFile = outFile;
             this.extractType = extractType;
-
         }
 
         @Override
@@ -124,6 +131,12 @@ public class Extractor {
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
                         BufferedWriter mbw = new BufferedWriter(new OutputStreamWriter(baos, Charset.forName("UTF-8")));
                         String text = new String(Files.readAllBytes(inFile), Charset.forName("UTF-8"));
+
+                        String fileName = inFile.toFile().getName();
+                        // TODO: clean this hack.
+                        List<String> labels = fileName.contains("cnnturk") ? extractLabels(text) : Collections.emptyList();
+                        String category = fileName.contains("cnnturk") ? "" : extractCategory(text);
+
                         text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
                         if (extractType == null || extractType.equals("ARTICLE")) {
                             text = ArticleExtractor.INSTANCE.getText(text);
@@ -135,6 +148,8 @@ public class Extractor {
                         String crawlDate = inDir.toFile().getName();
                         mbw.write("<doc id=\"" + id
                                 + "\" source=\"" + source
+                                + "\" labels=\"" + String.join(",", labels)
+                                + "\" category=\"" + category
                                 + "\" crawl-date=\"" + crawlDate + "\">");
                         mbw.newLine();
                         mbw.write(text);
@@ -154,6 +169,27 @@ public class Extractor {
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
+        }
+
+
+        static Pattern cnnLabelPattern = Pattern.compile("(<meta name=\"keywords\" content=\")(.+?)(\"[ ]?/>)");
+        static Pattern cnnCategoryPattern = Pattern.compile(
+                "(<!--Haber Üst Kısmı-->.+?title=\")(.+?)(\")");
+
+        private List<String> extractLabels(String text) {
+            String labels = Regexps.firstMatch(cnnLabelPattern, text, 2);
+            if (labels == null || labels.contains("/") || labels.contains("<")) {
+                return Collections.emptyList();
+            }
+            return Splitter.on(",").trimResults().splitToList(labels);
+        }
+
+        private String extractCategory(String text) {
+            String category = Regexps.firstMatch(cnnCategoryPattern, text, 2);
+            if (category == null) {
+                return "";
+            }
+            return category;
         }
     }
 

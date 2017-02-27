@@ -22,8 +22,8 @@ import java.util.stream.Collectors;
 public class Crawl4jExtractionCleaner {
 
     public static void main(String[] args) throws IOException {
-        reduce(Paths.get("/media/disk2/corpora/raw"),
-                Paths.get("/media/disk2/corpora/clean"),
+        reduce(Paths.get("/media/data/corpora/raw2"),
+                Paths.get("/media/data/corpora/clean2"),
                 false);
     }
 
@@ -64,7 +64,10 @@ public class Crawl4jExtractionCleaner {
         }
 
         public int sizeUnique() {
-            return pages.stream().map(Page::contentHash).collect(Collectors.toSet()).size();
+            return pages.stream()
+                    .map(Page::contentHash)
+                    .collect(Collectors.toSet())
+                    .size();
         }
 
         public int totalPageLineCount() {
@@ -107,7 +110,7 @@ public class Crawl4jExtractionCleaner {
                         p.println(reducedPage.getDocumentHeader());
                     }
                     p.println(reducedPage.content());
-                    if(!onlyContent) {
+                    if (!onlyContent) {
                         p.println("</doc>");
                     }
                 }
@@ -221,19 +224,25 @@ public class Crawl4jExtractionCleaner {
         String id;
         String url;
         String crawlDate;
+        String labels;
+        String category;
 
         List<String> lines = new ArrayList<>();
 
-        public Page(String source, String id, List<String> lines, String url, String crawlDate) {
+        public Page(String source, String id, List<String> lines, String url,
+                    String crawlDate, String labels, String category) {
             this.source = source;
             this.id = id;
             this.lines = lines;
             this.url = url;
             this.crawlDate = crawlDate;
+            this.labels = labels;
+            this.category = category;
         }
 
         public String getDocumentHeader() {
-            return "<doc id=\"" + id + "\" source=\"" + source + "\" craw-date=\"" + crawlDate + "\">";
+            return "<doc id=\"" + id + "\" source=\"" + source + "\" crawl-date=\"" + crawlDate +
+                    "\" labels=\"" + labels + "\" category=\"" + category + "\">";
         }
 
         public Page emptyContent() {
@@ -242,25 +251,29 @@ public class Crawl4jExtractionCleaner {
                     this.id,
                     Collections.emptyList(),
                     this.url,
-                    "");
+                    "", "", "");
         }
 
         static Pattern sourcePattern = Pattern.compile("(source=\")(.+?)(\")");
         static Pattern urlPattern = Pattern.compile("(id=\")(.+?)(\")");
         static Pattern crawlDatePattern = Pattern.compile("(crawl-date=\")(.+?)(\")");
+        static Pattern labelPattern = Pattern.compile("(labels=)(.+?)(\")");
+        static Pattern categoryPattern = Pattern.compile("(category=)(.+?)(\")");
 
         public static Page fromText(String meta, List<String> pageData) {
 
             String url = Regexps.firstMatch(urlPattern, meta, 2);
-            String id = url.replaceAll("http://|https://","");
+            String id = url.replaceAll("http://|https://", "");
             String source = Regexps.firstMatch(sourcePattern, meta, 2);
             String crawlDate = Regexps.firstMatch(crawlDatePattern, meta, 2);
+            String labels = Regexps.firstMatch(labelPattern, meta, 2).replace('\"',' ').trim();
+            String category = Regexps.firstMatch(categoryPattern, meta, 2).replace('\"',' ').trim();
 
             int i = source.lastIndexOf("/");
             if (i >= 0 && i < source.length()) {
                 source = source.substring(i + 1);
             }
-            return new Page(source, id, pageData, url, crawlDate);
+            return new Page(source, id, pageData, url, crawlDate, labels, category);
         }
 
         public long contentHash() {
@@ -272,7 +285,7 @@ public class Crawl4jExtractionCleaner {
         }
 
         public Page copy(Collection<String> reduced) {
-            return new Page(this.source, this.id, new ArrayList<>(reduced), this.url, this.crawlDate);
+            return new Page(this.source, this.id, new ArrayList<>(reduced), this.url, this.crawlDate, this.labels, this.category);
         }
 
         @Override

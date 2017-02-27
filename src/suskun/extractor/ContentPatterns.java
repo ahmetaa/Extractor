@@ -100,7 +100,9 @@ public class ContentPatterns {
         return result;
     }
 
-    public Crawl4jExtractionCleaner.Page reduce(Crawl4jExtractionCleaner.Page page, boolean removeDuplicates) {
+    public Crawl4jExtractionCleaner.Page reduce(
+            Crawl4jExtractionCleaner.Page page,
+            boolean removeDuplicates) {
 
         if (urlAcceptPatterns.size() > 0) {
             boolean accepted = false;
