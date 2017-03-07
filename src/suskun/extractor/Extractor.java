@@ -4,6 +4,8 @@ package suskun.extractor;
 import com.google.common.base.Splitter;
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
+import zemberek.core.concurrency.BlockingExecutor;
+import zemberek.core.logging.Log;
 import zemberek.core.text.Regexps;
 import zemberek.core.text.TextUtil;
 
@@ -15,9 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -34,24 +34,21 @@ public class Extractor {
         Path inRoot = Paths.get("/media/data/crawl/news");
         Path outRoot = Paths.get("/media/data/corpora/raw3");
         Extractor e = new Extractor();
-        e.extract(inRoot, outRoot, Pattern.compile("t24"));
-        // e.extract(inRoot, outRoot);
+        //e.extract(inRoot, outRoot, Pattern.compile("t24"));
+        e.extract(inRoot, outRoot);
     }
 
     private void extract(final Path inRoot, final Path outRoot, Pattern pattern) throws IOException, InterruptedException {
-        // TODO: system should process files multithreaded, not directories.
-        ThreadPoolExecutor es = new ThreadPoolExecutor(
-                10,
-                10,
-                0L,
-                TimeUnit.MILLISECONDS,
-                new LimitedQueue<>(10));
+
+        ExecutorService es = new BlockingExecutor(20, 20);
+        CompletionService<Path> service = new ExecutorCompletionService<>(es);
 
         List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
                 s -> s.toFile().isDirectory() && (pattern == null || Regexps.matchesAny(pattern, s.toFile().getName()))
         ).collect(Collectors.toList());
 
         final Pattern DATE = Pattern.compile("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
+        int taskCounter = 0;
 
         for (Path sourceDir : sourcePaths) {
             String source = sourceDir.toFile().getName();
@@ -74,25 +71,40 @@ public class Extractor {
                 Files.createDirectories(outDir);
                 Path outFile = outDir.resolve(day.toFile().getName());
                 System.out.println("Processing " + day + " to " + outFile);
+
                 if (Files.notExists(outFile)) {
-                    es.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source)));
+                    service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source)));
+                    taskCounter++;
                 }
             }
         }
-
         es.shutdown();
-        es.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+        try {
+            es.awaitTermination(10L, TimeUnit.MINUTES);
+            List<Path> results = new ArrayList<>();
+            while (results.size() < taskCounter) {
+                Path e = service.take().get();
+                if (e != null) {
+                    results.add(e);
+                } else {
+                    taskCounter--;
+                }
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            throw new RuntimeException("An error occurred during recognition", e);
+        }
 
     }
-
 
     private void extract(final Path inRoot, final Path outRoot) throws IOException, InterruptedException {
         extract(inRoot, outRoot, null);
     }
 
-    private static final class ExtractorTask implements Runnable {
+    private static final class ExtractorTask implements Callable<Path> {
 
-        private static final Pattern pattern = Pattern.compile("<head>.*</head>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+        private static final Pattern pattern =
+                Pattern.compile("<head>.*</head>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 
         final Path inDir;
         final Path outFile;
@@ -107,29 +119,28 @@ public class Extractor {
         }
 
         @Override
-        public void run() {
+        public Path call() {
 
+            if (extractType == null) {
+                extractType = "ARTICLE";
+            }
             Path tmp = Paths.get(outFile.toString() + ".tmp");
             if (Files.exists(tmp)) {
                 try {
                     Files.delete(tmp);
                 } catch (IOException ex) {
+                    ex.printStackTrace();
                     System.err.println(ex.toString());
-                    return;
+                    return null;
                 }
             }
 
-            if (extractType == null) {
-                extractType = "ARTICLE";
-            }
-
-            try (OutputStream os = Files.newOutputStream(tmp);
+            try (PrintWriter pw = new PrintWriter(new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 100_000));
                  DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
+
                 int count = 0;
                 for (Path inFile : ds) {
                     try {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        BufferedWriter mbw = new BufferedWriter(new OutputStreamWriter(baos, Charset.forName("UTF-8")));
                         String text = new String(Files.readAllBytes(inFile), Charset.forName("UTF-8"));
 
                         List<String> labels = patterns.labelPattern != null ?
@@ -148,20 +159,18 @@ public class Extractor {
                         String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
                         String source = inDir.getParent().getParent().toFile().getName();
                         String crawlDate = inDir.toFile().getName();
-                        mbw.write("<doc id=\"" + id
+                        pw.println("<doc id=\"" + id
                                 + "\" source=\"" + source
                                 + "\" title=\"" + title
                                 + "\" labels=\"" + String.join(",", labels)
                                 + "\" category=\"" + category
                                 + "\" crawl-date=\"" + crawlDate + "\">");
-                        mbw.newLine();
-                        mbw.write(text);
-                        mbw.write("</doc>");
-                        mbw.newLine();
-                        mbw.newLine();
-                        mbw.close();
-                        os.write(baos.toByteArray());
+                        pw.println(text.trim());
+                        pw.println("</doc>");
                         count++;
+                        if (count % 1000 == 0) {
+                            Log.info("%d files processed for %s ", count, outFile);
+                        }
                     } catch (Exception aex) {
                         aex.printStackTrace();
                         System.err.println("Exception in file " + inFile);
@@ -172,6 +181,7 @@ public class Extractor {
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
+            return outFile;
         }
 
         static Pattern labelSplitPattern = Pattern.compile("<.+?>");
