@@ -2,6 +2,7 @@ package suskun.extractor;
 
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Stopwatch;
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
 import zemberek.core.concurrency.BlockingExecutor;
@@ -70,7 +71,7 @@ public class Extractor {
                 Path outDir = outRoot.resolve(sourceDir.toFile().getName());
                 Files.createDirectories(outDir);
                 Path outFile = outDir.resolve(day.toFile().getName());
-                System.out.println("Processing " + day + " to " + outFile);
+                Log.info("Processing " + day + " to " + outFile);
 
                 if (Files.notExists(outFile)) {
                     service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source)));
@@ -80,7 +81,6 @@ public class Extractor {
         }
         es.shutdown();
         try {
-            es.awaitTermination(10L, TimeUnit.MINUTES);
             List<Path> results = new ArrayList<>();
             while (results.size() < taskCounter) {
                 Path e = service.take().get();
@@ -99,6 +99,16 @@ public class Extractor {
 
     private void extract(final Path inRoot, final Path outRoot) throws IOException, InterruptedException {
         extract(inRoot, outRoot, null);
+    }
+
+    static class FileContent {
+        Path path;
+        String content;
+
+        public FileContent(Path path, String content) {
+            this.path = path;
+            this.content = content;
+        }
     }
 
     private static final class ExtractorTask implements Callable<Path> {
@@ -124,6 +134,26 @@ public class Extractor {
             if (extractType == null) {
                 extractType = "ARTICLE";
             }
+
+            // load all paths in the directory.
+            List<Path> paths = new ArrayList<>(5000);
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
+                for (Path inFile : ds) {
+                    if (inFile.toFile().isDirectory()) {
+                        Log.warn("%s is a directory. Ignoring.");
+                        continue;
+                    }
+                    paths.add(inFile);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.err.println(e.toString());
+                return null;
+            }
+            Log.info("There are %d files to process in %s ", paths.size(), inDir);
+
+
+            // generate a temporary file.
             Path tmp = Paths.get(outFile.toString() + ".tmp");
             if (Files.exists(tmp)) {
                 try {
@@ -135,49 +165,72 @@ public class Extractor {
                 }
             }
 
-            try (PrintWriter pw = new PrintWriter(new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 100_000));
-                 DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
+            try (PrintWriter pw = new PrintWriter(
+                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 10_000_000))) {
 
                 int count = 0;
-                for (Path inFile : ds) {
-                    try {
-                        String text = new String(Files.readAllBytes(inFile), Charset.forName("UTF-8"));
+                int start = 0, end = 1000;
+                if (paths.size() < end) {
+                    end = paths.size();
+                }
+                Stopwatch sw = Stopwatch.createStarted();
+                while (start < paths.size()) {
 
-                        List<String> labels = patterns.labelPattern != null ?
-                                extractLabels(text, patterns.labelPattern) : Collections.emptyList();
-                        String category = patterns.categoryPattern != null ?
-                                extractCategory(text, patterns.categoryPattern) : "";
-                        String title = patterns.titlePattern != null ?
-                                extractTitle(text, patterns.titlePattern) : "";
+                    List<Path> block = paths.subList(start, end);
+                    start = end;
+                    end += 1000;
+                    if (paths.size() < end) {
+                        end = paths.size();
+                    }
+                    List<FileContent> contents = new ArrayList<>();
+                    for (Path path : block) {
+                        String content = new String(Files.readAllBytes(path), Charset.forName("UTF-8"));
+                        contents.add(new FileContent(path, content));
+                    }
+                    Log.info("Processing %d file in %s", block.size(), inDir);
 
-                        text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
-                        if (extractType == null || extractType.equals("ARTICLE")) {
-                            text = ArticleExtractor.INSTANCE.getText(text);
-                        } else if (extractType.equals("EVERYTHING")) {
-                            text = KeepEverythingExtractor.INSTANCE.getText(text);
+                    for (FileContent fileContent : contents) {
+                        String text = fileContent.content;
+                        Path inFile = fileContent.path;
+                        try {
+                            List<String> labels = patterns.labelPattern != null ?
+                                    extractLabels(text, patterns.labelPattern) : Collections.emptyList();
+                            String category = patterns.categoryPattern != null ?
+                                    extractCategory(text, patterns.categoryPattern) : "";
+                            String title = patterns.titlePattern != null ?
+                                    extractTitle(text, patterns.titlePattern) : "";
+
+                            text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
+                            if (extractType == null || extractType.equals("ARTICLE")) {
+                                text = ArticleExtractor.INSTANCE.getText(text);
+                            } else if (extractType.equals("EVERYTHING")) {
+                                text = KeepEverythingExtractor.INSTANCE.getText(text);
+                            }
+                            String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
+                            String source = inDir.getParent().getParent().toFile().getName();
+                            String crawlDate = inDir.toFile().getName();
+                            pw.println("<doc id=\"" + TextUtil.escapeQuotesApostrpohes(id)
+                                    + "\" source=\"" + TextUtil.escapeQuotesApostrpohes(source)
+                                    + "\" title=\"" + TextUtil.escapeQuotesApostrpohes(title)
+                                    + "\" labels=\"" + TextUtil.escapeQuotesApostrpohes(String.join(",", labels))
+                                    + "\" category=\"" + TextUtil.escapeQuotesApostrpohes(category)
+                                    + "\" crawl-date=\"" + crawlDate + "\">");
+                            pw.println(text.trim());
+                            pw.println("</doc>");
+                            count++;
+                        } catch (Exception aex) {
+                            aex.printStackTrace();
+                            System.err.println("Exception in file " + inFile);
                         }
-                        String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
-                        String source = inDir.getParent().getParent().toFile().getName();
-                        String crawlDate = inDir.toFile().getName();
-                        pw.println("<doc id=\"" + id
-                                + "\" source=\"" + source
-                                + "\" title=\"" + title
-                                + "\" labels=\"" + String.join(",", labels)
-                                + "\" category=\"" + category
-                                + "\" crawl-date=\"" + crawlDate + "\">");
-                        pw.println(text.trim());
-                        pw.println("</doc>");
-                        count++;
-                        if (count % 1000 == 0) {
-                            Log.info("%d files processed for %s ", count, outFile);
-                        }
-                    } catch (Exception aex) {
-                        aex.printStackTrace();
-                        System.err.println("Exception in file " + inFile);
                     }
                 }
                 Files.move(tmp, outFile);
-                System.out.println("completed : " + inDir + " " + count + " files" + "   extract : " + extractType);
+                Log.info("%s completed in %.1f seconds. There are %d files. %s used.",
+                        inDir,
+                        sw.elapsed(TimeUnit.MILLISECONDS) / 1000f,
+                        count,
+                        extractType);
+
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
