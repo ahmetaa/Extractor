@@ -21,12 +21,15 @@ public class ContentPatterns {
     Set<Pattern> pagePatterns = new LinkedHashSet<>();
     Set<Pattern> urlRemovePatterns = new LinkedHashSet<>();
     Set<Pattern> urlAcceptPatterns = new LinkedHashSet<>();
+    Pattern categoryPattern;
+    Pattern titlePattern;
+    Pattern labelPattern;
     Set<Pattern> wordPattern = new LinkedHashSet<>();
-    String extractor ;
+    String extractor;
 
     Map<Pattern, String> replacePatterns = new HashMap<>();
 
-    static ContentPatterns fromList(String  source, List<String> rules) {
+    static ContentPatterns fromList(String source, List<String> rules) {
         ContentPatterns patterns = new ContentPatterns();
         patterns.source = source;
         for (String rule : rules) {
@@ -52,6 +55,15 @@ public class ContentPatterns {
                     break;
                 case "I+":
                     patterns.urlAcceptPatterns.add(Pattern.compile(patternStr));
+                case "LABEL":
+                    patterns.labelPattern = Pattern.compile(patternStr, Pattern.DOTALL);
+                    break;
+                case "TITLE":
+                    patterns.titlePattern = Pattern.compile(patternStr);
+                    break;
+                case "CATEGORY":
+                    patterns.categoryPattern = Pattern.compile(patternStr);
+                    break;
                 case "R":
                     String pattern = Strings.subStringUntilFirst(patternStr, "->").trim();
                     String value = Strings.subStringAfterFirst(patternStr, "->").trim();
@@ -62,13 +74,23 @@ public class ContentPatterns {
         return patterns;
     }
 
-    public void merge(ContentPatterns patterns)  {
+    public void merge(ContentPatterns patterns) {
         this.getUrlRemovePatterns().addAll(patterns.getUrlRemovePatterns());
         this.getUrlAcceptPatterns().addAll(patterns.getUrlAcceptPatterns());
         this.getLinePatterns().addAll(patterns.getLinePatterns());
         this.getPagePatterns().addAll(patterns.getPagePatterns());
         this.getWordPattern().addAll(patterns.getWordPattern());
         this.getReplacePatterns().putAll(patterns.getReplacePatterns());
+        if (patterns.categoryPattern != null) {
+            this.categoryPattern = patterns.categoryPattern;
+        }
+        if (patterns.titlePattern != null) {
+            this.titlePattern = patterns.titlePattern;
+        }
+        if (patterns.labelPattern != null) {
+            this.labelPattern = patterns.labelPattern;
+        }
+
     }
 
 
@@ -87,15 +109,15 @@ public class ContentPatterns {
             List<String> ruleData = textConsumer.moveUntil(s -> s.trim().length() > 0 && !s.contains(":"));
             ContentPatterns patterns = ContentPatterns.fromList(meta, ruleData);
             result.put(meta, patterns);
-            result.put(meta.replaceAll("www\\.",""), patterns);
+            result.put(meta.replaceAll("www\\.", ""), patterns);
         }
 
         ContentPatterns global = result.get("global");
-        if(global==null) {
+        if (global == null) {
             return result;
         }
 
-        result.keySet().forEach(s->result.get(s).merge(global));
+        result.keySet().forEach(s -> result.get(s).merge(global));
 
         return result;
     }
@@ -164,6 +186,7 @@ public class ContentPatterns {
         }
         return result;
     }
+
     private LinkedHashSet<String> reduceLines(Crawl4jExtractionCleaner.Page page) {
         LinkedHashSet<String> reduced = new LinkedHashSet<>(page.lines);
         LinkedHashSet<String> next = new LinkedHashSet<>(reduced);

@@ -226,10 +226,11 @@ public class Crawl4jExtractionCleaner {
         String crawlDate;
         String labels;
         String category;
+        String title;
 
         List<String> lines = new ArrayList<>();
 
-        public Page(String source, String id, List<String> lines, String url,
+        public Page(String source, String id, String title, List<String> lines, String url,
                     String crawlDate, String labels, String category) {
             this.source = source;
             this.id = id;
@@ -238,10 +239,11 @@ public class Crawl4jExtractionCleaner {
             this.crawlDate = crawlDate;
             this.labels = labels;
             this.category = category;
+            this.title = title;
         }
 
         public String getDocumentHeader() {
-            return "<doc id=\"" + id + "\" source=\"" + source + "\" crawl-date=\"" + crawlDate +
+            return "<doc id=\"" + id + "\" source=\"" + source + "\" title=\"" + title + "\" crawl-date=\"" + crawlDate +
                     "\" labels=\"" + labels + "\" category=\"" + category + "\">";
         }
 
@@ -249,6 +251,7 @@ public class Crawl4jExtractionCleaner {
             return new Page(
                     this.source,
                     this.id,
+                    "",
                     Collections.emptyList(),
                     this.url,
                     "", "", "");
@@ -259,6 +262,11 @@ public class Crawl4jExtractionCleaner {
         static Pattern crawlDatePattern = Pattern.compile("(crawl-date=\")(.+?)(\")");
         static Pattern labelPattern = Pattern.compile("(labels=)(.+?)(\")");
         static Pattern categoryPattern = Pattern.compile("(category=)(.+?)(\")");
+        static Pattern titlePattern = Pattern.compile("(title=)(.+?)(\")");
+
+        private static String getAttribute(String str) {
+            return str == null ? "" : str.replace('\"', ' ').trim();
+        }
 
         public static Page fromText(String meta, List<String> pageData) {
 
@@ -266,14 +274,16 @@ public class Crawl4jExtractionCleaner {
             String id = url.replaceAll("http://|https://", "");
             String source = Regexps.firstMatch(sourcePattern, meta, 2);
             String crawlDate = Regexps.firstMatch(crawlDatePattern, meta, 2);
-            String labels = Regexps.firstMatch(labelPattern, meta, 2).replace('\"',' ').trim();
-            String category = Regexps.firstMatch(categoryPattern, meta, 2).replace('\"',' ').trim();
+            String labels = getAttribute(Regexps.firstMatch(labelPattern, meta, 2));
+
+            String category = getAttribute(Regexps.firstMatch(categoryPattern, meta, 2));
+            String title = getAttribute(Regexps.firstMatch(titlePattern, meta, 2));
 
             int i = source.lastIndexOf("/");
             if (i >= 0 && i < source.length()) {
                 source = source.substring(i + 1);
             }
-            return new Page(source, id, pageData, url, crawlDate, labels, category);
+            return new Page(source, id, title, pageData, url, crawlDate, labels, category);
         }
 
         public long contentHash() {
@@ -285,7 +295,7 @@ public class Crawl4jExtractionCleaner {
         }
 
         public Page copy(Collection<String> reduced) {
-            return new Page(this.source, this.id, new ArrayList<>(reduced), this.url, this.crawlDate, this.labels, this.category);
+            return new Page(this.source, this.id, this.title, new ArrayList<>(reduced), this.url, this.crawlDate, this.labels, this.category);
         }
 
         @Override
