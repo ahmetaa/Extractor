@@ -36,12 +36,12 @@ public class Extractor {
         Path outRoot = Paths.get("/media/data/corpora/raw3");
         Extractor e = new Extractor();
         //e.extract(inRoot, outRoot, Pattern.compile("t24"));
-        e.extract(inRoot, outRoot);
+        e.extract(inRoot, outRoot, null, 8);
     }
 
-    private void extract(final Path inRoot, final Path outRoot, Pattern pattern) throws IOException, InterruptedException {
+    private void extract(final Path inRoot, final Path outRoot, Pattern pattern, int threadCount) throws IOException, InterruptedException {
 
-        ExecutorService es = new BlockingExecutor(20, 20);
+        ExecutorService es = new BlockingExecutor(threadCount, threadCount);
         CompletionService<Path> service = new ExecutorCompletionService<>(es);
 
         List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
@@ -55,8 +55,9 @@ public class Extractor {
             String source = sourceDir.toFile().getName();
 
             Path data = sourceDir.resolve("data");
-            if (!data.toFile().exists())
+            if (!data.toFile().exists()) {
                 continue;
+            }
             List<Path> days = Files
                     .walk(data, 1)
                     .filter(s -> s.toFile().isDirectory())
@@ -95,10 +96,6 @@ public class Extractor {
             throw new RuntimeException("An error occurred during recognition", e);
         }
 
-    }
-
-    private void extract(final Path inRoot, final Path outRoot) throws IOException, InterruptedException {
-        extract(inRoot, outRoot, null);
     }
 
     static class FileContent {
@@ -140,7 +137,7 @@ public class Extractor {
             try (DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
                 for (Path inFile : ds) {
                     if (inFile.toFile().isDirectory()) {
-                        Log.warn("%s is a directory. Ignoring.");
+                        Log.warn("%s is a directory. Ignoring.", inFile);
                         continue;
                     }
                     paths.add(inFile);
@@ -182,12 +179,17 @@ public class Extractor {
                     if (paths.size() < end) {
                         end = paths.size();
                     }
+                    long st = sw.elapsed(TimeUnit.MILLISECONDS);
                     List<FileContent> contents = new ArrayList<>();
                     for (Path path : block) {
                         String content = new String(Files.readAllBytes(path), Charset.forName("UTF-8"));
                         contents.add(new FileContent(path, content));
                     }
-                    Log.info("Processing %d file in %s", block.size(), inDir);
+                    Log.info("Loaded %d from %s in %.1f seconds. Processing. (ThreadID=%d)",
+                            block.size(),
+                            inDir,
+                            (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
+                            Thread.currentThread().getId());
 
                     for (FileContent fileContent : contents) {
                         String text = fileContent.content;
@@ -225,11 +227,12 @@ public class Extractor {
                     }
                 }
                 Files.move(tmp, outFile);
-                Log.info("%s completed in %.1f seconds. There are %d files. %s used.",
+                Log.info("%s completed in %.1f seconds. There are %d files. %s used. (ThreadID=%d)",
                         inDir,
                         sw.elapsed(TimeUnit.MILLISECONDS) / 1000f,
                         count,
-                        extractType);
+                        extractType,
+                        Thread.currentThread().getId());
 
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -269,25 +272,5 @@ public class Extractor {
             }
             return TextUtil.convertAmpresandStrings(title);
         }
-    }
-
-    private static final class LimitedQueue<E> extends LinkedBlockingQueue<E> {
-
-        public LimitedQueue(int maxSize) {
-            super(maxSize);
-        }
-
-        @Override
-        public boolean offer(E e) {
-            // turn offer() and add() into a blocking calls (unless interrupted)
-            try {
-                put(e);
-                return true;
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
-            return false;
-        }
-
     }
 }
