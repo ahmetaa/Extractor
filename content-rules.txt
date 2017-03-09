@@ -41,10 +41,15 @@ L:^[ ]*[0-9]+\.[0-9]+%
 
 # -------------------- NEWS --------------------
 
+www.aa.com.tr
+I+:http://aa\.com\.tr/tr
+I-:haberakademisi
+I-:infografik
+
 www.aksam.com.tr
 
 www.cnnturk.com
-
+I-:i\.cnnturk.com
 LABEL:(<meta name="keywords" content=")(.+?)("[ ]?/>)
 CATEGORY:(<!--Haber Üst Kısmı-->.+?title=")(.+?)(")
 I-:action/ibanner
@@ -68,10 +73,12 @@ I-:www\.haberturk\.com/spor/iddaa
 www.hurriyet.com.tr
 
 www.iha.com.tr
-I:yazdir
+I-:yazdir
 E:ARTICLE
 L:\d{2}:\d{2}$
 L:[<]|[>]
+LABEL:(<p>Etiketler:)(.+?)(</div>)
+I-:foto-
 
 www.karar.com
 

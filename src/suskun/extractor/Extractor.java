@@ -11,6 +11,7 @@ import zemberek.core.text.Regexps;
 import zemberek.core.text.TextUtil;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class Extractor {
 
     private Map<String, ContentPatterns> patterns;
+    private Set<Path> sourcePaths = new HashSet<>();
 
     public Extractor() throws IOException {
         patterns = ContentPatterns.fromFile(Paths.get("content-rules.txt"));
@@ -37,18 +39,27 @@ public class Extractor {
         Path outRoot = Paths.get("/media/data/corpora/raw3");
         Extractor e = new Extractor();
         //e.extract(inRoot, outRoot, Pattern.compile("t24"));
-        Set<String> sources = new HashSet<>(TextUtil.loadLinesWithText(Paths.get("label-sources")));
-        e.extract(inRoot, outRoot, sources, 8);
+        List<Path> paths = TextUtil.loadLinesWithText(Paths.get("label-sources"))
+                .stream()
+                .map((s) -> {
+                    try {
+                        URI uri = new URI(s);
+                        return inRoot.resolve(uri.getHost());
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                        System.exit(-1);
+                        return null;
+                    }
+                }).collect(Collectors.toList());
+        e.sourcePaths = new LinkedHashSet<>(paths);
+        e.extract(inRoot, outRoot, 8);
     }
 
-    private void extract(final Path inRoot, final Path outRoot, Set<String> sources, int threadCount) throws IOException, InterruptedException {
+    private void extract(final Path inRoot, final Path outRoot, int threadCount)
+            throws IOException, InterruptedException {
 
         ExecutorService es = new BlockingExecutor(threadCount, threadCount);
         CompletionService<Path> service = new ExecutorCompletionService<>(es);
-
-        List<Path> sourcePaths = Files.walk(inRoot, 1)
-                .filter(s -> s.toFile().isDirectory() && (sources == null || sources.contains(s.toFile().getName())))
-                .collect(Collectors.toList());
 
         final Pattern DATE = Pattern.compile("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
         int taskCounter = 0;
@@ -139,35 +150,8 @@ public class Extractor {
             }
 
             // load all paths in the directory.
-            List<Path> paths = new ArrayList<>(5000);
-            int ignoredCount = 0;
-            try (DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
-                for (Path inFile : ds) {
-                    if (inFile.toFile().isDirectory()) {
-                        Log.warn("%s is a directory. Ignoring.", inFile);
-                        continue;
-                    }
-                    String url = inFile.toFile().getName();
-                    url = URLDecoder.decode(url, "UTF-8");
-                    boolean ignore = false;
-                    for (Pattern p : patterns.getUrlRemovePatterns()) {
-                        if (Regexps.matchesAny(p, url)) {
-                            ignore = true;
-                            break;
-                        }
-                    }
-                    if (!ignore) {
-                        paths.add(inFile);
-                    } else {
-                        ignoredCount++;
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.err.println(e.toString());
-                return null;
-            }
-            Log.info("There are %d files to process in %s. %d ignored. ", paths.size(), inDir, ignoredCount);
+            List<Path> paths = getPaths();
+            if (paths == null) return null;
 
 
             // generate a temporary file.
@@ -183,7 +167,7 @@ public class Extractor {
             }
 
             try (PrintWriter pw = new PrintWriter(
-                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 50_000_000))) {
+                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 10_000_000))) {
 
                 int count = 0;
                 int start = 0, end = blockSize;
@@ -267,7 +251,45 @@ public class Extractor {
             return outFile;
         }
 
-        static Pattern labelSplitPattern = Pattern.compile("<.+?>");
+        private List<Path> getPaths() {
+            List<Path> paths = new ArrayList<>(5000);
+            int ignoredCount = 0;
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
+                for (Path inFile : ds) {
+                    if (inFile.toFile().isDirectory()) {
+                        Log.warn("%s is a directory. Ignoring.", inFile);
+                        continue;
+                    }
+                    String url = inFile.toFile().getName();
+                    try {
+                        url = URLDecoder.decode(url, "UTF-8");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        continue;
+                    }
+                    boolean ignore = false;
+                    for (Pattern p : patterns.getUrlRemovePatterns()) {
+                        if (Regexps.matchesAny(p, url)) {
+                            ignore = true;
+                            break;
+                        }
+                    }
+                    if (!ignore) {
+                        paths.add(inFile);
+                    } else {
+                        ignoredCount++;
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.err.println(e.toString());
+                return null;
+            }
+            Log.info("There are %d files to process in %s. %d ignored. ", paths.size(), inDir, ignoredCount);
+            return paths;
+        }
+
+        static Pattern labelSplitPattern = Pattern.compile("<.+?>|[,]");
 
         private List<String> extractLabels(String text, Pattern pattern) {
             String labelChunk = Regexps.firstMatch(pattern, text, 2);
@@ -278,6 +300,7 @@ public class Extractor {
             List<String> labels;
             if (labelChunk.contains("<")) {
                 labels = Splitter.on(labelSplitPattern).omitEmptyStrings().trimResults().splitToList(labelChunk);
+                labels = labels.stream().filter(s -> !s.trim().equals(",")).collect(Collectors.toList());
             } else {
                 labels = Splitter.on(",").trimResults().splitToList(labelChunk);
             }
