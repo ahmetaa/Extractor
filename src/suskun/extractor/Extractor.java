@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -36,17 +37,18 @@ public class Extractor {
         Path outRoot = Paths.get("/media/data/corpora/raw3");
         Extractor e = new Extractor();
         //e.extract(inRoot, outRoot, Pattern.compile("t24"));
-        e.extract(inRoot, outRoot, null, 8);
+        Set<String> sources = new HashSet<>(TextUtil.loadLinesWithText(Paths.get("label-sources")));
+        e.extract(inRoot, outRoot, sources, 8);
     }
 
-    private void extract(final Path inRoot, final Path outRoot, Pattern pattern, int threadCount) throws IOException, InterruptedException {
+    private void extract(final Path inRoot, final Path outRoot, Set<String> sources, int threadCount) throws IOException, InterruptedException {
 
         ExecutorService es = new BlockingExecutor(threadCount, threadCount);
         CompletionService<Path> service = new ExecutorCompletionService<>(es);
 
-        List<Path> sourcePaths = Files.walk(inRoot, 1).filter(
-                s -> s.toFile().isDirectory() && (pattern == null || Regexps.matchesAny(pattern, s.toFile().getName()))
-        ).collect(Collectors.toList());
+        List<Path> sourcePaths = Files.walk(inRoot, 1)
+                .filter(s -> s.toFile().isDirectory() && (sources == null || sources.contains(s.toFile().getName())))
+                .collect(Collectors.toList());
 
         final Pattern DATE = Pattern.compile("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
         int taskCounter = 0;
@@ -75,7 +77,7 @@ public class Extractor {
                 Log.info("Processing " + day + " to " + outFile);
 
                 if (Files.notExists(outFile)) {
-                    service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source)));
+                    service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source), 1000));
                     taskCounter++;
                 }
             }
@@ -108,6 +110,8 @@ public class Extractor {
         }
     }
 
+    static ReentrantLock lock = new ReentrantLock();
+
     private static final class ExtractorTask implements Callable<Path> {
 
         private static final Pattern pattern =
@@ -117,12 +121,14 @@ public class Extractor {
         final Path outFile;
         String extractType;
         ContentPatterns patterns;
+        int blockSize;
 
-        ExtractorTask(Path inDir, Path outFile, String extractType, ContentPatterns patterns) {
+        ExtractorTask(Path inDir, Path outFile, String extractType, ContentPatterns patterns, int blockSize) {
             this.inDir = inDir;
             this.outFile = outFile;
             this.extractType = extractType;
             this.patterns = patterns;
+            this.blockSize = blockSize;
         }
 
         @Override
@@ -134,20 +140,34 @@ public class Extractor {
 
             // load all paths in the directory.
             List<Path> paths = new ArrayList<>(5000);
+            int ignoredCount = 0;
             try (DirectoryStream<Path> ds = Files.newDirectoryStream(inDir)) {
                 for (Path inFile : ds) {
                     if (inFile.toFile().isDirectory()) {
                         Log.warn("%s is a directory. Ignoring.", inFile);
                         continue;
                     }
-                    paths.add(inFile);
+                    String url = inFile.toFile().getName();
+                    url = URLDecoder.decode(url, "UTF-8");
+                    boolean ignore = false;
+                    for (Pattern p : patterns.getUrlRemovePatterns()) {
+                        if (Regexps.matchesAny(p, url)) {
+                            ignore = true;
+                            break;
+                        }
+                    }
+                    if (!ignore) {
+                        paths.add(inFile);
+                    } else {
+                        ignoredCount++;
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
                 System.err.println(e.toString());
                 return null;
             }
-            Log.info("There are %d files to process in %s ", paths.size(), inDir);
+            Log.info("There are %d files to process in %s. %d ignored. ", paths.size(), inDir, ignoredCount);
 
 
             // generate a temporary file.
@@ -163,10 +183,10 @@ public class Extractor {
             }
 
             try (PrintWriter pw = new PrintWriter(
-                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 10_000_000))) {
+                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 50_000_000))) {
 
                 int count = 0;
-                int start = 0, end = 1000;
+                int start = 0, end = blockSize;
                 if (paths.size() < end) {
                     end = paths.size();
                 }
@@ -175,22 +195,24 @@ public class Extractor {
 
                     List<Path> block = paths.subList(start, end);
                     start = end;
-                    end += 1000;
+                    end += blockSize;
                     if (paths.size() < end) {
                         end = paths.size();
                     }
                     long st = sw.elapsed(TimeUnit.MILLISECONDS);
                     List<FileContent> contents = new ArrayList<>();
+                    lock.lock();
                     for (Path path : block) {
                         String content = new String(Files.readAllBytes(path), Charset.forName("UTF-8"));
                         contents.add(new FileContent(path, content));
                     }
+                    lock.unlock();
                     Log.info("Loaded %d from %s in %.1f seconds. Processing. (ThreadID=%d)",
                             block.size(),
                             inDir,
                             (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
                             Thread.currentThread().getId());
-
+                    st = sw.elapsed(TimeUnit.MILLISECONDS);
                     for (FileContent fileContent : contents) {
                         String text = fileContent.content;
                         Path inFile = fileContent.path;
@@ -225,6 +247,11 @@ public class Extractor {
                             System.err.println("Exception in file " + inFile);
                         }
                     }
+                    Log.info("Processed %d from %s in %.1f seconds. (ThreadID=%d)",
+                            block.size(),
+                            inDir,
+                            (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
+                            Thread.currentThread().getId());
                 }
                 Files.move(tmp, outFile);
                 Log.info("%s completed in %.1f seconds. There are %d files. %s used. (ThreadID=%d)",

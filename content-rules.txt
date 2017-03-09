@@ -17,9 +17,17 @@ I-:fotohaber
 I-:webtv
 I-:/en/
 I-:/ar/
+I-:namaz-vakitleri
+I-:-vakti
+I-:/resim
+I-:/reklam/
+I-:secim-
+I-:\.jpg
 L:devamını okumak için lütfen tıklayın
 L:Tüm hakları saklıdır
 L:iktibas edilemez
+L:metin boyutu
+L:metni yazdır
 TITLE:(<title>)(.+?)(</title>)
 
 L:[<]|[>]
@@ -39,6 +47,8 @@ www.cnnturk.com
 
 LABEL:(<meta name="keywords" content=")(.+?)("[ ]?/>)
 CATEGORY:(<!--Haber Üst Kısmı-->.+?title=")(.+?)(")
+I-:action/ibanner
+I-:action/iplayer
 
 www.cumhuriyet.com.tr
 
@@ -53,6 +63,7 @@ L:önce$
 
 www.haberturk.com
 I-:www\.haberturk\.com/secim
+I-:www\.haberturk\.com/spor/iddaa
 
 www.hurriyet.com.tr
 
@@ -74,6 +85,7 @@ L: Haberleri -
 L:\( permalink \)
 
 www.ntv.com.tr
+LABEL:(<h4>ETİKETLER</h4>)(.+?)(</section>)
 
 www.posta.com.tr
 W:\[\[HAFTAYA\]\]
@@ -88,8 +100,15 @@ I-:amkspor
 
 t24.com.tr
 LABEL:(<div>ETİKETLER</div>)(.+?)(</div>)
+I-:/etiketler
 
 www.yenisafak.com
+LABEL:(<div class="tag-main">)(.+?)(</div>)
+I-:hava-durumu
+I-:/reklam/
+I-:secim-
+I-:m\.yenisafak
+I-:/spor
 
 www.zaytung.com
 I-:store\.zaytung\.com
