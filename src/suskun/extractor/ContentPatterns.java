@@ -10,10 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static suskun.extractor.Crawl4jExtractionCleaner.*;
 
 public class ContentPatterns {
     String source;
@@ -122,8 +121,8 @@ public class ContentPatterns {
         return result;
     }
 
-    public Crawl4jExtractionCleaner.Page reduce(
-            Crawl4jExtractionCleaner.Page page,
+    public WebDocument reduce(
+            WebDocument page,
             boolean removeDuplicates) {
 
         if (urlAcceptPatterns.size() > 0) {
@@ -145,17 +144,17 @@ public class ContentPatterns {
 
 
         for (Pattern pagePattern : pagePatterns) {
-            if (Regexps.matchesAny(pagePattern, page.content())) {
+            if (Regexps.matchesAny(pagePattern, page.getContentAsString())) {
                 return page.emptyContent();
             }
         }
 
         Collection<String> reduced = removeDuplicates ? reduceLines(page) : reduceLinesNoUnique(page);
-        return page.copy(reduced);
+        return page.copy(new ArrayList<>(reduced));
     }
 
 
-    private Collection<String> reduceLinesNoUnique(Crawl4jExtractionCleaner.Page page) {
+    private Collection<String> reduceLinesNoUnique(WebDocument page) {
         List<String> reduced = new ArrayList<>(page.lines);
         List<String> next = new ArrayList<>(reduced);
         for (Pattern linePattern : linePatterns) {
@@ -187,7 +186,14 @@ public class ContentPatterns {
         return result;
     }
 
-    private LinkedHashSet<String> reduceLines(Crawl4jExtractionCleaner.Page page) {
+    public static String cleanAndNormalize(String input) {
+        return TextUtil.cleanAllHtmlRelated(
+                TextUtil.normalizeQuotesHyphens(
+                        TextUtil.convertAmpresandStrings(
+                                TextUtil.cleanCdataIllegalChars(input, " "))));
+    }
+
+    private LinkedHashSet<String> reduceLines(WebDocument page) {
         LinkedHashSet<String> reduced = new LinkedHashSet<>(page.lines);
         LinkedHashSet<String> next = new LinkedHashSet<>(reduced);
         for (Pattern linePattern : linePatterns) {
@@ -232,6 +238,81 @@ public class ContentPatterns {
         reduced = new LinkedHashSet<>(next);
         return reduced;
     }
+
+
+    public static double digitRatio(String s) {
+        if (s.trim().length() == 0)
+            return 0;
+        int d = 0;
+        for (char c : s.toCharArray()) {
+            if (Character.isDigit(c)) {
+                d++;
+            }
+        }
+        return (d * 1d) / s.length();
+    }
+
+    public static double capitalRatio(String s) {
+        if (s.trim().length() == 0)
+            return 0;
+        int d = 0;
+        for (char c : s.toCharArray()) {
+            if (Character.isUpperCase(c)) {
+                d++;
+            }
+        }
+        return (d * 1d) / s.length();
+    }
+
+    private static String turkishChars = "[çğıöşüÇŞĞÜÖİ]";
+    private static char[] turkishCharArray = turkishChars.toCharArray();
+
+    private static Pattern turkishCharsPattern = Pattern.compile(turkishChars);
+
+
+    // simple heuristic for catching badly typed Turkish sentences.
+    // This checks if sentence is written without Turkish characters,
+    // or 'ı' is used instead of 'i'
+    // this kind of mistakes are pretty common in forum like places.
+    static public boolean badlyTypedTurkish(String s) {
+        int dotlessICount = TextUtil.countChars(s, 'ı');
+        int iCount = TextUtil.countChars(s, 'i');
+
+        if (dotlessICount > 0) {
+            if (iCount == 0 || ((double) iCount) / dotlessICount < 0.2d)
+                return true;
+        }
+        if (!Regexps.matchesAny(turkishCharsPattern, s)) {
+            return true;
+        }
+        int turkishCharCount = TextUtil.countChars(s, turkishCharArray);
+        return ((double) turkishCharCount) / s.length() < 0.05d;
+    }
+
+    private static Pattern URL_PERCENT_PATTERN = Pattern.compile("[%][A-Fa-f0-9]{2}");
+
+    /**
+     * Converts a string like
+     * http%3A%2F%2Fwowturkey.com%2Fforum%2Fviewtopic.php%3Fstart%3D10%26t%3D124646
+     * to
+     * http://wowturkey.com/forum/viewtopic.php?start=10&t=124646
+     */
+    static String normalizePercentStrings(String in) {
+        Matcher matcher = URL_PERCENT_PATTERN.matcher(in);
+        StringBuffer sb = new StringBuffer(in.length());
+        while (matcher.find()) {
+            String text = matcher.group();
+            char c = (char) Integer.parseInt(text.replace("%", ""), 16);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(String.valueOf(c)));
+        }
+        if (sb.length() > 0)
+            matcher.appendTail(sb);
+        if (sb.length() == 0) {
+            return in;
+        }
+        return sb.toString();
+    }
+
 
     public String getSource() {
         return source;
