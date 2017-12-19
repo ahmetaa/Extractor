@@ -225,6 +225,24 @@ L:İleti$
 
 www.kizlarsoruyor.com
 
+I-:/ara?
+I-:=sorular
+L:Ana Sayfa >
+L:Xper
+L:eig[ ]
+W:Daha Fazla
+W:#[^ ]+
+L:[0-9]+ EİG Seçildi
+L:[0-9]+ Geçerli Görüş
+L:Kızlar Ne Diyor [0-9]+
+L:Erkekler Ne Diyor [0-9]+
+L:[0-9]+ Soru sordu
+L:[0-9]+ Görüş paylaştı
+L:Editör$
+L:Fenomen$
+L:Daha Az Göster$
+
+
 E:EVERYTHING
 
 www.kadinlarkulubu.com
@@ -570,6 +588,16 @@ www.uludagsozluk.com
 
 E:EVERYTHING
 
+www.incisozluk.com.tr
 
-
+E:EVERYTHING
+I-:/e/
+I-:/u/
+I-:=iletisim
+I-:/populer/
+I-:/yeni/
+I-:/eniyi/
+I-:/sahibi/
+I-:list_
+I-:/\?url/
 

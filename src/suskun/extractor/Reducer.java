@@ -14,12 +14,14 @@ public class Reducer {
 
     public static void main(String[] args) throws IOException {
 
-        Path sourceRoot = Paths.get("/media/data/corpora/single-file");
+        Path sourceRoot = Paths.get("/media/aaa/Data/corpora/forum-test/");
         List<Path> paths = Lists.newArrayList(Files.walk(sourceRoot, 1)
-                .filter(path -> path.toFile().isFile()).iterator());
+                .filter(path -> path.toFile().isDirectory() && !path.equals(sourceRoot)).iterator());
 
-        Path outRoot = Paths.get("/media/data/corpora/single-file-reduced");
-        reduce(paths, outRoot, false, true);
+        Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test-reduced");
+
+        reduce(sourceRoot, outRoot, false);
+
     }
 
     public static void reduce(List<Path> files, Path outRoot, boolean saveOnlyContent, boolean removeDuplicateLines) throws IOException {
@@ -36,7 +38,7 @@ public class Reducer {
             Log.info(corpus);
             Log.info("Total = %d ", corpus.getPages().size());
 
-            ContentPatterns patterns = removePatternsMap.get(corpus.source.replaceAll("\\.corpus$",""));
+            ContentPatterns patterns = removePatternsMap.get(corpus.source.replaceAll("\\.corpus$", ""));
             if (patterns == null) {
                 Log.warn("No remove pattern found for " + corpus.source);
                 patterns = new ContentPatterns();
@@ -56,27 +58,30 @@ public class Reducer {
     public static void reduce(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
 
         List<Path> dirs = Lists.newArrayList(Files.walk(sourceRoot)
-                .filter(path -> path.toFile().isDirectory()).iterator());
+                .filter(path -> path.toFile().isDirectory() && !path.equals(sourceRoot)).iterator());
         Files.createDirectories(outRoot);
         Map<String, ContentPatterns> removePatternsMap =
                 ContentPatterns.fromFile(Paths.get("content-rules.txt"));
 
+
         for (Path dir : dirs) {
+
+            String name = dir.toFile().getName();
 
             List<Path> files = Lists.newArrayList(Files.walk(dir, 1)
                     .filter(path -> path.toFile().isFile()).iterator());
             if (files.size() == 0) continue;
 
             for (Path file : files) {
-                WebCorpus corpus = new WebCorpus(file.toFile().getName(), "foo");
+                WebCorpus corpus = new WebCorpus(name, file.toFile().getName());
                 corpus.addDocuments(WebCorpus.loadDocuments(file));
 
                 Log.info(corpus);
                 Log.info("Total = %d ", corpus.getPages().size());
 
-                ContentPatterns patterns = removePatternsMap.get(corpus.source);
+                ContentPatterns patterns = removePatternsMap.get(name);
                 if (patterns == null) {
-                    Log.warn("No remove pattern found for " + corpus.source);
+                    Log.warn("No remove pattern found for " + name);
                     patterns = new ContentPatterns();
                 }
 

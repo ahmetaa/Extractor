@@ -108,7 +108,7 @@ public class ContentPatterns {
             List<String> ruleData = textConsumer.moveUntil(s -> s.trim().length() > 0 && !s.contains(":"));
             ContentPatterns patterns = ContentPatterns.fromList(meta, ruleData);
             result.put(meta, patterns);
-            result.put(meta.replaceAll("www\\.", ""), patterns);
+            result.put(meta.replaceAll("www\\.|http://|https://", ""), patterns);
         }
 
         ContentPatterns global = result.get("global");

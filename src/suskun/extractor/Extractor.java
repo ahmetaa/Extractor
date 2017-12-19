@@ -3,8 +3,8 @@ package suskun.extractor;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
-import de.l3s.boilerpipe.extractors.ArticleExtractor;
-import de.l3s.boilerpipe.extractors.KeepEverythingExtractor;
+import com.kohlschutter.boilerpipe.extractors.ArticleExtractor;
+import com.kohlschutter.boilerpipe.extractors.KeepEverythingExtractor;
 import zemberek.core.concurrency.BlockingExecutor;
 import zemberek.core.logging.Log;
 import zemberek.core.text.Regexps;
@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -34,16 +33,28 @@ public class Extractor {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        //TODO: fill below
-        Path inRoot = Paths.get("/media/data/crawl/news");
-        Path outRoot = Paths.get("/media/data/corpora/raw3");
+
+        Path inRoot = Paths.get("/media/aaa/Data/crawl/forum-tr");
+        Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test");
+
+        //extractAll(inRoot, outRoot);
+        Extractor extractor = new Extractor();
+        extractor.extractFromSourceCrawls(
+                inRoot.resolve("www.incisozluk.com.tr"), outRoot, 4
+        );
+    }
+
+    private static void extractAll(Path inRoot, Path outRoot) throws IOException, InterruptedException {
         Extractor e = new Extractor();
-        //e.extract(inRoot, outRoot, Pattern.compile("t24"));
-        List<Path> paths = TextUtil.loadLinesWithText(Paths.get("label-sources"))
+        List<Path> paths = TextUtil.loadLinesWithText(Paths.get("forum-test"))
                 .stream()
                 .map((s) -> {
                     try {
+                        if (!s.startsWith("http")) {
+                            s = ("http://" + s);
+                        }
                         URI uri = new URI(s);
+                        Log.info(uri.getHost());
                         return inRoot.resolve(uri.getHost());
                     } catch (Exception exception) {
                         exception.printStackTrace();
@@ -52,45 +63,68 @@ public class Extractor {
                     }
                 }).collect(Collectors.toList());
         e.sourcePaths = new LinkedHashSet<>(paths);
-        e.extract(inRoot, outRoot, 8);
+        e.extract(outRoot, 8);
     }
 
-    private void extract(final Path inRoot, final Path outRoot, int threadCount)
+    static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+
+    private void extract(final Path outRoot, int threadCount)
             throws IOException, InterruptedException {
 
-        ExecutorService es = new BlockingExecutor(threadCount, threadCount);
-        CompletionService<Path> service = new ExecutorCompletionService<>(es);
-
-        final Pattern DATE = Pattern.compile("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
-        int taskCounter = 0;
-
         for (Path sourceDir : sourcePaths) {
-            String source = sourceDir.toFile().getName();
-
             Path data = sourceDir.resolve("data");
             if (!data.toFile().exists()) {
                 continue;
             }
-            List<Path> days = Files
-                    .walk(data, 1)
-                    .filter(s -> s.toFile().isDirectory())
-                    .collect(Collectors.toList());
-            for (Path day : days) {
-                if (!DATE.matcher(day.toFile().getName()).matches())
-                    continue;
-                String extractString = null;
-                if (patterns.containsKey(source)) {
-                    extractString = patterns.get(source).extractor;
-                }
-                Path outDir = outRoot.resolve(sourceDir.toFile().getName());
-                Files.createDirectories(outDir);
-                Path outFile = outDir.resolve(day.toFile().getName());
-                Log.info("Processing " + day + " to " + outFile);
+            extractFromSourceCrawls(sourceDir, outRoot, threadCount);
+        }
+    }
 
-                if (Files.notExists(outFile)) {
-                    service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(source), 1000));
-                    taskCounter++;
-                }
+
+    private void extractFromSourceCrawls(final Path sourceCrawlRoot, final Path outRoot, int threadCount)
+            throws IOException, InterruptedException {
+
+        String sourceName = sourceCrawlRoot.toFile().getName();
+
+        Path data = sourceCrawlRoot.resolve("data");
+
+        List<Path> crawlDayFolders = Files
+                .walk(data, 1)
+                .filter(s -> s.toFile().isDirectory())
+                .collect(Collectors.toList());
+
+        Log.info("There are %d crawl day folders for %s", crawlDayFolders.size(), sourceName);
+
+        ExecutorService es = new BlockingExecutor(threadCount, threadCount);
+        CompletionService<Path> service = new ExecutorCompletionService<>(es);
+
+        int taskCounter = 0;
+
+        for (Path day : crawlDayFolders) {
+
+            // make sure we are processing correct folders.
+            if (!DATE.matcher(day.toFile().getName()).matches()) {
+                Log.warn("Incorrect folder name: %s. A Date pattern is expected.", day);
+                continue;
+            }
+
+            String extractString = null;
+
+            if (patterns.containsKey(sourceName)) {
+                extractString = patterns.get(sourceName).extractor;
+            }
+
+            Path outDir = outRoot.resolve(sourceName);
+
+            Files.createDirectories(outDir);
+
+            Path outFile = outDir.resolve(day.toFile().getName());
+
+            Log.info("Processing " + day + " to " + outFile);
+
+            if (Files.notExists(outFile)) {
+                service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(sourceName), 500));
+                taskCounter++;
             }
         }
         es.shutdown();
@@ -108,8 +142,8 @@ public class Extractor {
             e.printStackTrace();
             throw new RuntimeException("An error occurred during recognition", e);
         }
-
     }
+
 
     static class FileContent {
         Path path;
@@ -121,7 +155,15 @@ public class Extractor {
         }
     }
 
-    static ReentrantLock lock = new ReentrantLock();
+    static class ExtractData {
+        String id;
+        String source;
+        String title;
+        String category;
+        String crawlDate;
+        String text;
+        List<String> labels = new ArrayList<>();
+    }
 
     private static final class ExtractorTask implements Callable<Path> {
 
@@ -153,91 +195,95 @@ public class Extractor {
             List<Path> paths = getPaths();
             if (paths == null) return null;
 
-
-            // generate a temporary file.
-            Path tmp = Paths.get(outFile.toString() + ".tmp");
-            if (Files.exists(tmp)) {
-                try {
-                    Files.delete(tmp);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    System.err.println(ex.toString());
-                    return null;
-                }
+            int count = 0;
+            int start = 0, end = blockSize;
+            if (paths.size() < end) {
+                end = paths.size();
             }
+            Stopwatch sw = Stopwatch.createStarted();
 
-            try (PrintWriter pw = new PrintWriter(
-                    new BufferedOutputStream(new FileOutputStream(tmp.toFile()), 10_000_000))) {
+            List<ExtractData> extractDataList = new ArrayList<>(10000);
+            while (start < paths.size()) {
 
-                int count = 0;
-                int start = 0, end = blockSize;
+                List<Path> block = paths.subList(start, end);
+                start = end;
+                end += blockSize;
                 if (paths.size() < end) {
                     end = paths.size();
                 }
-                Stopwatch sw = Stopwatch.createStarted();
-                while (start < paths.size()) {
+                long st = sw.elapsed(TimeUnit.MILLISECONDS);
+                List<FileContent> contents = new ArrayList<>();
 
-                    List<Path> block = paths.subList(start, end);
-                    start = end;
-                    end += blockSize;
-                    if (paths.size() < end) {
-                        end = paths.size();
-                    }
-                    long st = sw.elapsed(TimeUnit.MILLISECONDS);
-                    List<FileContent> contents = new ArrayList<>();
-                    lock.lock();
-                    for (Path path : block) {
+                for (Path path : block) {
+                    try {
                         String content = new String(Files.readAllBytes(path), Charset.forName("UTF-8"));
                         contents.add(new FileContent(path, content));
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    lock.unlock();
-                    Log.info("Loaded %d from %s in %.1f seconds. Processing. (ThreadID=%d)",
-                            block.size(),
-                            inDir,
-                            (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
-                            Thread.currentThread().getId());
-                    st = sw.elapsed(TimeUnit.MILLISECONDS);
-                    for (FileContent fileContent : contents) {
-                        String text = fileContent.content;
-                        Path inFile = fileContent.path;
-                        try {
-                            List<String> labels = patterns.labelPattern != null ?
-                                    extractLabels(text, patterns.labelPattern) : Collections.emptyList();
-                            String category = patterns.categoryPattern != null ?
-                                    extractCategory(text, patterns.categoryPattern) : "";
-                            String title = patterns.titlePattern != null ?
-                                    extractTitle(text, patterns.titlePattern) : "";
-
-                            text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
-                            if (extractType == null || extractType.equals("ARTICLE")) {
-                                text = ArticleExtractor.INSTANCE.getText(text);
-                            } else if (extractType.equals("EVERYTHING")) {
-                                text = KeepEverythingExtractor.INSTANCE.getText(text);
-                            }
-                            String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
-                            String source = inDir.getParent().getParent().toFile().getName();
-                            String crawlDate = inDir.toFile().getName();
-                            pw.println("<doc id=\"" + TextUtil.escapeQuotesApostrpohes(id)
-                                    + "\" source=\"" + TextUtil.escapeQuotesApostrpohes(source)
-                                    + "\" title=\"" + TextUtil.escapeQuotesApostrpohes(title)
-                                    + "\" labels=\"" + TextUtil.escapeQuotesApostrpohes(String.join(",", labels))
-                                    + "\" category=\"" + TextUtil.escapeQuotesApostrpohes(category)
-                                    + "\" crawl-date=\"" + crawlDate + "\">");
-                            pw.println(text.trim());
-                            pw.println("</doc>");
-                            count++;
-                        } catch (Exception aex) {
-                            aex.printStackTrace();
-                            System.err.println("Exception in file " + inFile);
-                        }
-                    }
-                    Log.info("Processed %d from %s in %.1f seconds. (ThreadID=%d)",
-                            block.size(),
-                            inDir,
-                            (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
-                            Thread.currentThread().getId());
                 }
-                Files.move(tmp, outFile);
+
+                Log.info("Loaded %d from %s in %.1f seconds. Processing. (ThreadID=%d)",
+                        block.size(),
+                        inDir,
+                        (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
+                        Thread.currentThread().getId());
+                st = sw.elapsed(TimeUnit.MILLISECONDS);
+                for (FileContent fileContent : contents) {
+                    String text = fileContent.content;
+                    Path inFile = fileContent.path;
+                    try {
+                        List<String> labels = patterns.labelPattern != null ?
+                                extractLabels(text, patterns.labelPattern) : Collections.emptyList();
+                        String category = patterns.categoryPattern != null ?
+                                extractCategory(text, patterns.categoryPattern) : "";
+                        String title = patterns.titlePattern != null ?
+                                extractTitle(text, patterns.titlePattern) : "";
+
+                        text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
+                        if (extractType == null || extractType.equals("ARTICLE")) {
+                            text = ArticleExtractor.INSTANCE.getText(text);
+                        } else if (extractType.equals("EVERYTHING")) {
+                            text = KeepEverythingExtractor.INSTANCE.getText(text);
+                        }
+                        String id = URLDecoder.decode(inFile.toFile().getName(), "utf-8");
+                        String source = inDir.getParent().getParent().toFile().getName();
+                        String crawlDate = inDir.toFile().getName();
+                        ExtractData data = new ExtractData();
+                        data.id = id;
+                        data.source = source;
+                        data.category = category;
+                        data.title = title;
+                        data.labels = labels;
+                        data.crawlDate = crawlDate;
+                        data.text = text;
+                        extractDataList.add(data);
+                        count++;
+                    } catch (Exception aex) {
+                        aex.printStackTrace();
+                        System.err.println("Exception in file " + inFile);
+                    }
+                }
+                Log.info("Processed %d from %s in %.1f seconds. (ThreadID=%d)",
+                        block.size(),
+                        inDir,
+                        (sw.elapsed(TimeUnit.MILLISECONDS) - st) / 1000f,
+                        Thread.currentThread().getId());
+            }
+
+            Log.info("Saving to file %s", outFile);
+            try (PrintWriter pw = new PrintWriter(
+                    new BufferedOutputStream(new FileOutputStream(outFile.toFile()), 10_000_000))) {
+                for (ExtractData data : extractDataList) {
+                    pw.println("<doc id=\"" + TextUtil.escapeQuotesApostrpohes(data.id)
+                            + "\" source=\"" + TextUtil.escapeQuotesApostrpohes(data.source)
+                            + "\" title=\"" + TextUtil.escapeQuotesApostrpohes(data.title)
+                            + "\" labels=\"" + TextUtil.escapeQuotesApostrpohes(String.join(",", data.labels))
+                            + "\" category=\"" + TextUtil.escapeQuotesApostrpohes(data.category)
+                            + "\" crawl-date=\"" + data.crawlDate + "\">");
+                    pw.println(data.text.trim());
+                    pw.println("</doc>");
+                }
                 Log.info("%s completed in %.1f seconds. There are %d files. %s used. (ThreadID=%d)",
                         inDir,
                         sw.elapsed(TimeUnit.MILLISECONDS) / 1000f,
