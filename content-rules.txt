@@ -14,15 +14,32 @@ I-:video
 I-:galeri
 I-:foto-haber
 I-:fotohaber
+I-:banner
+I-:button
+I-:UyeProfil
+I-:/profil/
 I-:webtv
 I-:/en/
 I-:/ar/
 I-:namaz-vakitleri
+I-:kullanici-
+I-:kayitliste-
+I-:returnurl
+I-:loginModal
 I-:-vakti
 I-:/resim
 I-:/reklam/
 I-:secim-
 I-:\.jpg
+I-:autoplay
+I-:/uyeler/
+I-:/login/
+I-:printpage
+I-:search\.php
+I-:newreply\.php
+I-:nick=
+I-:/etiket/
+
 L:devamını okumak için lütfen tıklayın
 L:Tüm hakları saklıdır
 L:iktibas edilemez
@@ -42,9 +59,20 @@ L:^[ ]*[0-9]+\.[0-9]+%
 # -------------------- NEWS --------------------
 
 www.aa.com.tr
-I+:http://aa\.com\.tr/tr
+I-:http://aa\.com\.tr/en
+I-:http://aa\.com\.tr/ba
+I-:http://aa\.com\.tr/ru
+I-:http://aa\.com\.tr/fr
+I-:http://aa\.com\.tr/ar
+I-:http://aa\.com\.tr/ar
+I-:http://aa\.com\.tr/kk
+I-:http://aa\.com\.tr/ks
+I-:http://aa\.com\.tr/sq
+I-:http://aa\.com\.tr/fa
+I-:http://aa\.com\.tr/mk
 I-:haberakademisi
 I-:infografik
+I-:[^ ]+\.aa
 
 www.aksam.com.tr
 
@@ -54,21 +82,28 @@ LABEL:(<meta name="keywords" content=")(.+?)("[ ]?/>)
 CATEGORY:(<!--Haber Üst Kısmı-->.+?title=")(.+?)(")
 I-:action/ibanner
 I-:action/iplayer
+I-:/amp/
 
 www.cumhuriyet.com.tr
 
 www.dunya.com
 E:ARTICLE
 LABEL:(<div class="tags">)(.+?)(</div>)
+I-:i\.dunya\.com
+I-:m\.dunya\.com
 
 www.ensonhaber.com
 
 E:ARTICLE
 L:önce$
+I-:m\.ensonhaber
+I-:icdn\.ensonhaber
+
 
 www.haberturk.com
 I-:www\.haberturk\.com/secim
 I-:www\.haberturk\.com/spor/iddaa
+I-:m\.haberturk
 
 www.hurriyet.com.tr
 
@@ -79,6 +114,8 @@ L:\d{2}:\d{2}$
 L:[<]|[>]
 LABEL:(<p>Etiketler:)(.+?)(</div>)
 I-:foto-
+I-:etiket-
+I-:/amp/
 
 www.karar.com
 
@@ -87,6 +124,7 @@ I-:ilan-detay
 I-:uyeno
 I-:indir\.milliyet
 I-:arama
+I-:m\.milliyet
 E:ARTICLE
 L: Haberleri -
 L:\( permalink \)
@@ -100,6 +138,9 @@ W:\[\[HAFTAYA\]\]
 www.sabah.com.tr
 I-:cizerler
 I-:namaz-vakitleri
+I-:m\.sabah
+I-:/yorum/
+I-:/secim/
 E:ARTICLE
 
 www.sozcu.com.tr
@@ -108,6 +149,7 @@ I-:amkspor
 t24.com.tr
 LABEL:(<div>ETİKETLER</div>)(.+?)(</div>)
 I-:/etiketler
+I-:m\.t24\.com
 
 www.yenisafak.com
 LABEL:(<div class="tag-main">)(.+?)(</div>)
@@ -116,6 +158,7 @@ I-:/reklam/
 I-:secim-
 I-:m\.yenisafak
 I-:/spor
+I-:assets
 
 www.zaytung.com
 I-:store\.zaytung\.com
@@ -129,6 +172,8 @@ www.bilim.org
 
 tv.yazarokur.com
 
+I-:/giris
+I-:yazarokur\.com/iletisim
 E:EVERYTHING
 L:->$
 L:!!$
@@ -150,6 +195,8 @@ www.sikayetvar.com
 E:EVERYTHING
 I+:detay
 I+:tesekkur
+I+:sikayetvar\.com/[^/]+$
+I-:page=[0-9]+
 L:\|
 L:\.{3}
 I-:uye
@@ -177,6 +224,9 @@ L:^Değerli
 L:^Markamız
 
 www.sikayetim.com
+E:EVERYTHING
+I-:sikayetim\.com/send
+I-:loginModal
 
 www.yorumla.com
 
@@ -241,13 +291,13 @@ L:[0-9]+ Görüş paylaştı
 L:Editör$
 L:Fenomen$
 L:Daha Az Göster$
-
-
 E:EVERYTHING
 
 www.kadinlarkulubu.com
 
 E:EVERYTHING
+I-:/likes
+I-:/photos/
 I-:gallery
 I-:member
 I-:title
@@ -308,6 +358,8 @@ I-:index
 I-:title
 I-:lastpost
 I-:replycount
+I-:/search/
+I-:redirect=
 L:^Konuya bir cevap
 L:Tüm Zamanlar GMT
 L:Powered by vBulletin
@@ -342,6 +394,8 @@ mobile.donanimhaber.com
 
 E:EVERYTHING
 I-:showprofile
+I-:showForum
+I-:filter
 L:^<
 L:Cevap:
 L:^Orjinalden
@@ -415,6 +469,7 @@ W:\(Oylama\)
 www.frmtr.com
 
 E:EVERYTHING
+I-:-post[0-9]+\.
 
 www.duslerforum.org
 
@@ -496,6 +551,10 @@ E:EVERYTHING
 # weather
 
 forum.havaforum.com
+I-:members-list
+I-:/user
+I-:/search
+I-:/tagged
 
 E:EVERYTHING
 
@@ -561,6 +620,9 @@ E:EVERYTHING
 I-:member
 I-:list
 I-:forumdisplay
+I-:law\.hukuki
+I-:yabanci\.hukuki
+I-:/links/
 L:[<]|[>]
 L:\[[0-9]+\]$
 L:\([0-9]+\)$
@@ -581,12 +643,27 @@ L:konu bulunmuştur
 # Urban
 
 www.eksisozluk.com
-
 E:EVERYTHING
+I-:nick=
+I-:/\?q=
+I-:/basliklar/
+I-:a=dailynice
+I-:a=popular
+I-:/entry/
+I-:eksisozluk\.com/entry
 
 www.uludagsozluk.com
 
 E:EVERYTHING
+I-:uludagsozluk.com/e/
+I-:uludagsozluk.com/ses/
+I-:uludagsozluk.com/v/
+I-:nickimde-degilsiniz\.uludagsozluk
+L:[0-9]+ entry
+L:bkz:
+L:^\.\.\.
+L:^#[0-9]+
+
 
 www.incisozluk.com.tr
 
@@ -600,4 +677,44 @@ I-:/eniyi/
 I-:/sahibi/
 I-:list_
 I-:/\?url/
+
+# commerce reviews
+
+www.hepsiburada.com
+I+:yorumlari
+I-:ayagina-gelsin
+I-:staticPage
+I-:filtre
+I-:yeni-uye
+I-:blog
+I-:haberler
+E:EVERYTHING
+
+# movie reviews
+
+www.beyazperde.com
+E:EVERYTHING
+I-:sinemalar
+I-:sanatcilar
+I-:haberler
+I-:fragmanlar
+I-:fotolar
+I-:seanslar
+I-:diziler
+I-:oyuncular
+I-:dosyalar
+I-:fragman
+I-:/benzer
+I-:/enteresan
+I-:video
+I-:uye-
+I+:elestiriler
+
+www.listelist.com
+E:EVERYTHING
+
+onedio.com
+E:EVERYTHING
+I-:/ara/
+I-:/etiket/
 

@@ -37,17 +37,19 @@ public class Extractor {
         Path inRoot = Paths.get("/media/aaa/Data/crawl/forum-tr");
         Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test");
 
-        //extractAll(inRoot, outRoot);
+        extractAll(inRoot, outRoot);
+/*
         Extractor extractor = new Extractor();
         extractor.extractFromSourceCrawls(
-                inRoot.resolve("www.incisozluk.com.tr"), outRoot, 4
-        );
+                inRoot.resolve("www.uludagsozluk.com"), outRoot, 4 );
+                */
     }
 
     private static void extractAll(Path inRoot, Path outRoot) throws IOException, InterruptedException {
         Extractor e = new Extractor();
         List<Path> paths = TextUtil.loadLinesWithText(Paths.get("forum-test"))
                 .stream()
+                .filter(s -> !s.trim().startsWith("#") && s.trim().length() > 0)
                 .map((s) -> {
                     try {
                         if (!s.startsWith("http")) {
@@ -63,7 +65,7 @@ public class Extractor {
                     }
                 }).collect(Collectors.toList());
         e.sourcePaths = new LinkedHashSet<>(paths);
-        e.extract(outRoot, 8);
+        e.extract(outRoot, 4);
     }
 
     static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
@@ -125,6 +127,8 @@ public class Extractor {
             if (Files.notExists(outFile)) {
                 service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(sourceName), 500));
                 taskCounter++;
+            } else {
+                Log.warn("File %s exist, skipping.", outFile);
             }
         }
         es.shutdown();
@@ -233,11 +237,11 @@ public class Extractor {
                     String text = fileContent.content;
                     Path inFile = fileContent.path;
                     try {
-                        List<String> labels = patterns.labelPattern != null ?
+                        List<String> labels = (patterns != null && patterns.labelPattern != null) ?
                                 extractLabels(text, patterns.labelPattern) : Collections.emptyList();
-                        String category = patterns.categoryPattern != null ?
+                        String category = (patterns != null && patterns.categoryPattern != null) ?
                                 extractCategory(text, patterns.categoryPattern) : "";
-                        String title = patterns.titlePattern != null ?
+                        String title = (patterns != null && patterns.titlePattern != null) ?
                                 extractTitle(text, patterns.titlePattern) : "";
 
                         text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");
@@ -314,10 +318,12 @@ public class Extractor {
                         continue;
                     }
                     boolean ignore = false;
-                    for (Pattern p : patterns.getUrlRemovePatterns()) {
-                        if (Regexps.matchesAny(p, url)) {
-                            ignore = true;
-                            break;
+                    if (patterns != null) {
+                        for (Pattern p : patterns.getUrlRemovePatterns()) {
+                            if (Regexps.matchesAny(p, url)) {
+                                ignore = true;
+                                break;
+                            }
                         }
                     }
                     if (!ignore) {
