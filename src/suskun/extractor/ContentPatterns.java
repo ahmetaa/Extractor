@@ -1,5 +1,6 @@
 package suskun.extractor;
 
+import com.google.common.base.Splitter;
 import zemberek.core.io.Strings;
 import zemberek.core.text.Regexps;
 import zemberek.core.text.TextConsumer;
@@ -27,6 +28,7 @@ public class ContentPatterns {
     String extractor;
 
     Map<Pattern, String> replacePatterns = new HashMap<>();
+    Map<String, String> replaceWords = new HashMap<>();
 
     static ContentPatterns fromList(String source, List<String> rules) {
         ContentPatterns patterns = new ContentPatterns();
@@ -63,14 +65,40 @@ public class ContentPatterns {
                 case "CATEGORY":
                     patterns.categoryPattern = Pattern.compile(patternStr);
                     break;
-                case "R":
+                case "RP":
                     String pattern = Strings.subStringUntilFirst(patternStr, "->").trim();
                     String value = Strings.subStringAfterFirst(patternStr, "->").trim();
                     patterns.replacePatterns.put(Pattern.compile(pattern), value);
                     break;
+                case "RW-E":
+                    String key = Strings.subStringUntilFirst(patternStr, "->").trim();
+                    key = key.replaceAll("^\\[|]$", "");
+                    String val = Strings.subStringAfterFirst(patternStr, "->").trim();
+                    val = val.replaceAll("^\\[|]$", "");
+                    patterns.replaceWords.put(key, decodeAsciiLetters(val));
+                    break;
+                case "RW":
+                    String k = Strings.subStringUntilFirst(patternStr, "->").trim();
+                    k = k.replaceAll("^\\[|]$", "");
+                    String v = Strings.subStringAfterFirst(patternStr, "->").trim();
+                    v = v.replaceAll("^\\[|]$", "");
+                    patterns.replaceWords.put(k, v);
+                    break;
             }
         }
         return patterns;
+    }
+
+    static String decodeAsciiLetters(String input) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            if (c < 'A' || c > 'z') {
+                sb.append(c);
+            } else {
+                sb.append((char) (c - 1));
+            }
+        }
+        return sb.toString();
     }
 
     public void merge(ContentPatterns patterns) {
@@ -80,6 +108,7 @@ public class ContentPatterns {
         this.getPagePatterns().addAll(patterns.getPagePatterns());
         this.getWordPattern().addAll(patterns.getWordPattern());
         this.getReplacePatterns().putAll(patterns.getReplacePatterns());
+        this.getReplaceWords().putAll(patterns.getReplaceWords());
         if (patterns.categoryPattern != null) {
             this.categoryPattern = patterns.categoryPattern;
         }
@@ -149,7 +178,7 @@ public class ContentPatterns {
             }
         }
 
-        Collection<String> reduced = removeDuplicates ? reduceLines(page) : reduceLinesNoUnique(page);
+        Collection<String> reduced = removeDuplicates ? reduceLines(page).result : reduceLinesNoUnique(page);
         return page.copy(new ArrayList<>(reduced));
     }
 
@@ -193,7 +222,19 @@ public class ContentPatterns {
                                 TextUtil.cleanCdataIllegalChars(input, " "))));
     }
 
-    private LinkedHashSet<String> reduceLines(WebDocument page) {
+
+    static class ReducedResult {
+        LinkedHashSet<String> result;
+        int digitRemovedCount = 0;
+        int capitalRemoveCount = 0;
+        int repetitionCount = 0;
+        int badlyTypedTurkish = 0;
+    }
+
+    private ReducedResult reduceLines(WebDocument page) {
+
+        ReducedResult result = new ReducedResult();
+
         LinkedHashSet<String> reduced = new LinkedHashSet<>(page.lines);
         LinkedHashSet<String> next = new LinkedHashSet<>(reduced);
         for (Pattern linePattern : linePatterns) {
@@ -209,23 +250,32 @@ public class ContentPatterns {
         next = new LinkedHashSet<>();
         for (String s : reduced) {
             String cleanAndNormalized = cleanAndNormalize(s);
+            for (String key : replaceWords.keySet()) {
+                cleanAndNormalized = cleanAndNormalized.replaceAll(key, replaceWords.get(key));
+            }
             for (Pattern pattern : wordPattern) {
                 cleanAndNormalized = pattern.matcher(cleanAndNormalized).replaceAll(" ");
             }
+            //TODO: not sure about this.
             next.add(TextUtil.separatePunctuationConnectedWords(cleanAndNormalized, 3));
         }
         reduced = new LinkedHashSet<>(next);
 
+
         for (String s : reduced) {
             if (digitRatio(s) > 0.2) {
                 next.remove(s);
+                result.digitRemovedCount++;
             }
         }
+
         reduced = new LinkedHashSet<>(next);
+
 
         for (String s : reduced) {
             if (capitalRatio(s) > 0.3) {
                 next.remove(s);
+                result.capitalRemoveCount++;
             }
         }
         reduced = new LinkedHashSet<>(next);
@@ -233,10 +283,26 @@ public class ContentPatterns {
         for (String s : reduced) {
             if (s.length() > 20 && badlyTypedTurkish(s)) {
                 next.remove(s);
+                result.badlyTypedTurkish++;
             }
         }
         reduced = new LinkedHashSet<>(next);
-        return reduced;
+
+        for (String s : reduced) {
+            if (s.length() > 50 && repetitionRation(s) < 0.7) {
+                next.remove(s);
+                result.repetitionCount++;
+            }
+        }
+
+        result.result = next;
+        return result;
+    }
+
+    private float repetitionRation(String s) {
+        List<String> l = Splitter.on(" ").splitToList(s);
+        LinkedHashSet<String> set = new LinkedHashSet<>(l);
+        return (set.size() * 1f) / l.size();
     }
 
 
@@ -344,5 +410,9 @@ public class ContentPatterns {
 
     public Map<Pattern, String> getReplacePatterns() {
         return replacePatterns;
+    }
+
+    public Map<String, String> getReplaceWords() {
+        return replaceWords;
     }
 }

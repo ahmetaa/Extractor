@@ -34,10 +34,11 @@ public class Extractor {
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
-        Path inRoot = Paths.get("/media/aaa/Data/crawl/forum-tr");
-        Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test");
+        Path inRoot = Paths.get("/media/aaa/Data/crawl/news");
+        Path outRoot = Paths.get("/media/aaa/Data/corpora/news");
+        Path sourcesList = Paths.get("news");
 
-        extractAll(inRoot, outRoot);
+        extractAll(inRoot, outRoot, sourcesList);
 /*
         Extractor extractor = new Extractor();
         extractor.extractFromSourceCrawls(
@@ -45,9 +46,9 @@ public class Extractor {
                 */
     }
 
-    private static void extractAll(Path inRoot, Path outRoot) throws IOException, InterruptedException {
+    private static void extractAll(Path inRoot, Path outRoot, Path sourcesList) throws IOException, InterruptedException {
         Extractor e = new Extractor();
-        List<Path> paths = TextUtil.loadLinesWithText(Paths.get("forum-test"))
+        List<Path> paths = TextUtil.loadLinesWithText(sourcesList)
                 .stream()
                 .filter(s -> !s.trim().startsWith("#") && s.trim().length() > 0)
                 .map((s) -> {
@@ -314,7 +315,7 @@ public class Extractor {
                     try {
                         url = URLDecoder.decode(url, "UTF-8");
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        Log.warn("Cannot decode URL %s ", url);
                         continue;
                     }
                     boolean ignore = false;
@@ -342,15 +343,19 @@ public class Extractor {
         }
 
         static Pattern labelSplitPattern = Pattern.compile("<.+?>|[,]");
+        static Pattern labelSplitPatternHref = Pattern.compile("(?:<a href.+?>\\s?+)(.+?)(?:</a>)");
 
         private List<String> extractLabels(String text, Pattern pattern) {
-            String labelChunk = Regexps.firstMatch(pattern, text, 2);
+            String labelChunk = Regexps.firstMatch(pattern, text, 2).replaceAll("[\n\r]+", " ");
             if (labelChunk == null || labelChunk.trim().length() == 0) {
                 return Collections.emptyList();
             }
             labelChunk = TextUtil.convertAmpresandStrings(labelChunk);
             List<String> labels;
-            if (labelChunk.contains("<")) {
+            if (labelChunk.contains("<a href")) {
+                labels = Splitter.on(labelSplitPatternHref).omitEmptyStrings().trimResults().splitToList(labelChunk);
+                labels = labels.stream().filter(s -> !s.trim().equals(",")).collect(Collectors.toList());
+            } else if (labelChunk.contains("<")) {
                 labels = Splitter.on(labelSplitPattern).omitEmptyStrings().trimResults().splitToList(labelChunk);
                 labels = labels.stream().filter(s -> !s.trim().equals(",")).collect(Collectors.toList());
             } else {

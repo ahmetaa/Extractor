@@ -4,6 +4,10 @@
 # P: Page regexp
 # W: word regexp. all matches will be replaced with space.
 # E: Extractor type
+# RP: Replace patten with string. foo->bar, all matches with Pattern("foo") will replaced with "bar"
+# RW: Replace string. foo->bar, all matches with string "foo" will replaced with "bar"
+# RW-E: Replace string Encoded. Used for writing profanity words. Format is foo->bar but bar needs to be decoded as +1 chars.
+#       Such as foo->cbs. Only english alphabetic letters must be encoded.
 # LABEL: label pattern
 # TITLE: Title pattern
 # CATEGORY: Category pattern
@@ -50,7 +54,9 @@ TITLE:(<title>)(.+?)(</title>)
 L:[<]|[>]
 L:\[[0-9]+\]$
 L:\([0-9]+\)$
+L:\d{2}:\d{2}$
 L:http
+L:Tıkla İzle
 
 test
 
@@ -70,6 +76,9 @@ I-:http://aa\.com\.tr/ks
 I-:http://aa\.com\.tr/sq
 I-:http://aa\.com\.tr/fa
 I-:http://aa\.com\.tr/mk
+I-:http://aa\.com\.tr/es
+I-:http://aa\.com\.tr/es
+I-:http://aa\.com\.tr/id
 I-:haberakademisi
 I-:infografik
 I-:[^ ]+\.aa
@@ -96,8 +105,13 @@ www.ensonhaber.com
 
 E:ARTICLE
 L:önce$
+L:kez izlendi$
+L:Ensonhaber\.com
+L:Tıkla İzle
+L:İZLE$
 I-:m\.ensonhaber
-I-:icdn\.ensonhaber
+I-:/takipciler
+I-:/u/
 
 
 www.haberturk.com
@@ -173,6 +187,7 @@ www.bilim.org
 tv.yazarokur.com
 
 I-:/giris
+I-:uyeol_id
 I-:yazarokur\.com/iletisim
 E:EVERYTHING
 L:->$
@@ -183,12 +198,19 @@ L:^Film:
 L:^::
 L:]$
 L: Oy$
+L:^Sunucu:
+L:^seviye:
+L:^•
+L:[+]+$
 
 www.tvyorumlari.com
 
 E:EVERYTHING
 L:Yorum Popülerlik
 L:^Aktif Kullanıcılar
+L:^#
+L:[ ]Yorumları$
+L:[*]{3}
 
 www.sikayetvar.com
 
@@ -222,11 +244,20 @@ L:şikayet edilmiştir\.$
 L:iletilmiştir\.$
 L:^Değerli
 L:^Markamız
+L:^Markalar
+L:[ ]Okunma$
+L:\d{6}$
+L:^Sayın[ ]
+L:[0-9]+[ ](Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)$
 
 www.sikayetim.com
 E:EVERYTHING
 I-:sikayetim\.com/send
 I-:loginModal
+L:^görüntüleme:
+L:\.\.\. Devam$
+L:^cevap
+L:^Memnuniyetler:
 
 www.yorumla.com
 
@@ -268,10 +299,18 @@ L:görüntülenemiyor
 L:/
 L:\|
 L:^Yorumlar
+L:^Son:
 L:\[[0-9]+\]$
 L:\([0-9]+\)$
+L:[0-9]+$
+L:[ ]Menü$
+L:[ ]hamileleri$
+L:[ ]anneleri$
 L:http
+L:soruyor:
+L:[*?]+H[*]
 L:İleti$
+
 
 www.kizlarsoruyor.com
 
@@ -323,6 +362,13 @@ L:Üye$
 L:sayfa$
 L:Guest$
 L:QUOTE
+L:kullanıcısı henüz
+L:Oylanma:
+L:adlı üyenin
+L:etiketlendiği fotoğraflar\.
+L:Ziyaretçi$
+L:bunu beğendi\.$
+L:^Album:
 W::[^ ]+:
 W:\[.+?\]
 
@@ -355,6 +401,7 @@ E:EVERYTHING
 I-:member
 I-:whoposted
 I-:index
+I-:_debug
 I-:title
 I-:lastpost
 I-:replycount
@@ -389,6 +436,12 @@ L:- forum
 L:Üyecik$
 L:Profesör$
 L:Asistan$
+L:dedi:
+L:said:
+L:Quote Reply
+L:Konuyu açan:
+L:Params:
+L:^\d{4}-\d{2}-\d{2}
 
 mobile.donanimhaber.com
 
@@ -443,6 +496,16 @@ L:gün önce$
 W:\(Görsel\)
 L:Bütün Soru Başlıkları Silinecektir
 L:Bl\.$
+L:mesaj\)$
+L:^Tıklama
+L:[ ]önce$
+L:[ ]dün$
+L:[0-9]+[ ]gün$
+L:[0-9]+[ ]dk\.$
+L:[0-9]+[ ]sa\.$
+L:[0-9]+[ ]yıl$
+L:[0-9]+[ ]ay$
+L:Sabit Konu
 
 wowturkey.com
 
@@ -463,6 +526,9 @@ L:\[[0-9]+\]$
 L:\([0-9]+\)$
 L:^\[
 L:^%
+L:^[^-^ ]+[ ]?-
+L:\(Kilitli\)$
+L:^·
 W:\[.+?\]
 W:\(Oylama\)
 
@@ -470,6 +536,13 @@ www.frmtr.com
 
 E:EVERYTHING
 I-:-post[0-9]+\.
+I-:bolum-index
+L:Tüm saatler
+L:Gön:
+L:Moderatörler
+L:Tartışma Konusu :
+L:^Taşındı:
+L:^C:
 
 www.duslerforum.org
 
@@ -546,7 +619,17 @@ E:EVERYTHING
 
 klimaforumu.com
 
+I-:printthread
 E:EVERYTHING
+L:^Yorum Sayısı:
+L:^Konu Sayısı:
+L:^Sponsor Link
+L:^Beğeniler:
+L:^Rep Puanı:
+L:^Şehir:
+L:^RE:
+L:Konu Başlığı
+L:konusu$
 
 # weather
 
@@ -565,6 +648,29 @@ savunmaturk.net
 E:EVERYTHING
 
 www.defenceturk.com
+L:^«
+L:»$
+L:^Beğeni
+L:\.\.\.$
+L:^Ynt:
+L:^Sayfa:
+L:^İleti:
+L:^Beğenilen konu
+L:^Normal Konu
+L:^Bugün En
+L:^SMF
+L:^Alıntı yapılan
+L:İleti$
+L:Gösterim$
+L:^Gönderen Konu:
+L:Okunma sayısı
+L:Üye$
+L:Konu$
+L:Son İleti
+L:Alt Bölümler:
+L:Moderatörler:
+L:\([ 0-9]+\)$
+
 
 E:EVERYTHING
 
@@ -575,6 +681,10 @@ www.balikavi.net
 E:EVERYTHING
 
 avlakforum.com
+I-:msg[0-9]+
+L:^Gönderen
+L:Ziyaretçi,
+L:Son Düzenleme
 
 E:EVERYTHING
 
@@ -610,6 +720,7 @@ L:konuyu incelemekte
 L:Üye$
 L:^\[
 W::[^ ]+:
+W::[^:]+:
 W:emoji[0-9]+
 L:Gönderen\:
 
@@ -620,6 +731,8 @@ E:EVERYTHING
 I-:member
 I-:list
 I-:forumdisplay
+I-:en\.hukuki\.net
+I-:/haber/
 I-:law\.hukuki
 I-:yabanci\.hukuki
 I-:/links/
@@ -634,6 +747,7 @@ L:^Yanıt
 L:^Yazan
 L:^Cevap
 L:^Re:
+L:^•
 L:^Bütün Zaman
 L:^[0-9]+ Sayfalar
 L:içerik bulunamadı
@@ -651,6 +765,8 @@ I-:a=dailynice
 I-:a=popular
 I-:/entry/
 I-:eksisozluk\.com/entry
+L:^\(bkz
+L:önce$
 
 www.uludagsozluk.com
 
@@ -663,6 +779,16 @@ L:[0-9]+ entry
 L:bkz:
 L:^\.\.\.
 L:^#[0-9]+
+L:^bu hafta [0-9]+
+L:[0-9]+ takipçi
+L:belki onlar işinize yarar.$
+L:başlığı henüz açılmamış!$
+L:^günün[ ]
+L:[ ]\|[ ]
+L:galeri [0-9]+
+L:video [0-9]+
+L:[0-9]+ dk önce$
+L:ulupuan$
 
 
 www.incisozluk.com.tr
@@ -677,6 +803,33 @@ I-:/eniyi/
 I-:/sahibi/
 I-:list_
 I-:/\?url/
+RW-E:huur->psptqv
+RW-E:giber->tjlfs
+RW-E:gibim->tjlfzjn
+RW-E:gibe->tjlm
+RW-E:gibc->tjld
+RW-E:gibt->tjlu
+RW-E:gibm->tjln
+RW-E:gibsi->tjltj
+RW-E:gibse->tjltf
+RW-E:gibiş->tjljş
+RW-E:gibici->tjljdj
+RW-E:gibimd->tjljne
+RW-E:gibil->tjljm
+RW-E:gibin->tjljo
+RW-E:ferre->qpsop
+RW-E:[ gib ]->[ tjl ]
+RW-E:dıbı->bnı
+RW-E:züt->höu
+RW-E:muallak->jcmf
+RW-E:qorno->qpsop
+RW:pgibo->psiko
+RW:kegib->kesik
+RW:klagib->klasik
+RW:ekgib->eksik
+L:köle no
+L:\(bkz
+W:edit [0-9]+
 
 # commerce reviews
 
@@ -711,10 +864,13 @@ I-:uye-
 I+:elestiriler
 
 www.listelist.com
-E:EVERYTHING
+E:ARTICLE
 
 onedio.com
 E:EVERYTHING
 I-:/ara/
 I-:/etiket/
+L:Facebook'ta Paylaş
+L:Şikayet Et$
+L:Takip Et$
 

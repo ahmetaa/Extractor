@@ -78,6 +78,11 @@ public class WebCorpus {
         lookup.put(document.getId(), document);
     }
 
+    public void removeAll() {
+        pages.clear();
+        lookup.clear();
+    }
+
 
     public static List<WebDocument> loadDocuments(Path corpusFile) throws IOException {
         List<String> allLines = Files.readAllLines(corpusFile, StandardCharsets.UTF_8);
@@ -160,29 +165,6 @@ public class WebCorpus {
         }
     }
 
-    public void saveReduced(
-            ContentPatterns patterns,
-            Path outRoot,
-            boolean onlyContent,
-            boolean removeDuplicatedLines) throws IOException {
-
-        List<WebDocument> reducedPages = getReducedPages(patterns, removeDuplicatedLines);
-
-        Path resolve = outRoot.resolve(source);
-        Files.createDirectories(resolve);
-
-        try (PrintWriter p = new PrintWriter(resolve.resolve(id).toFile(), "utf-8")) {
-            for (WebDocument reducedPage : reducedPages) {
-                if (!onlyContent) {
-                    p.println(reducedPage.getDocumentHeader());
-                }
-                p.println(reducedPage.getContentAsString());
-                if (!onlyContent) {
-                    p.println("</doc>");
-                }
-            }
-        }
-    }
 
     public List<WebDocument> getReducedPages(ContentPatterns patterns, boolean removeDuplicatedLines) {
         // remove duplicated lines.

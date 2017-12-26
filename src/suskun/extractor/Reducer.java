@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -14,17 +15,26 @@ public class Reducer {
 
     public static void main(String[] args) throws IOException {
 
-        Path sourceRoot = Paths.get("/media/aaa/Data/corpora/forum-test/");
-        List<Path> paths = Lists.newArrayList(Files.walk(sourceRoot, 1)
-                .filter(path -> path.toFile().isDirectory() && !path.equals(sourceRoot)).iterator());
-
+        Path sourceRoot = Paths.get("/media/aaa/Data/corpora/forum-test");
         Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test-reduced");
-
-        reduce(sourceRoot, outRoot, false);
+        reduceAll(sourceRoot, outRoot, false);
 
     }
 
-    public static void reduce(List<Path> files, Path outRoot, boolean saveOnlyContent, boolean removeDuplicateLines) throws IOException {
+    private static void reduceAll(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
+        List<Path> sourceDirs = Lists.newArrayList(Files.walk(sourceRoot, 1)
+                .filter(path -> path.toFile().isDirectory() && !path.equals(sourceRoot)).iterator());
+        for (Path sourceDir : sourceDirs) {
+            Log.info("Processing %s", sourceDir);
+            reduceSingle(sourceDir, outRoot, saveOnlyContent);
+        }
+    }
+
+    public static void reduce(
+            List<Path> files,
+            Path outRoot,
+            boolean saveOnlyContent,
+            boolean removeDuplicateLines) throws IOException {
 
         Files.createDirectories(outRoot);
         Map<String, ContentPatterns> removePatternsMap =
@@ -55,41 +65,49 @@ public class Reducer {
     }
 
 
-    public static void reduce(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
+    public static void reduceSingle(Path sourceRoot, Path outRoot, boolean saveOnlyContent) throws IOException {
 
-        List<Path> dirs = Lists.newArrayList(Files.walk(sourceRoot)
-                .filter(path -> path.toFile().isDirectory() && !path.equals(sourceRoot)).iterator());
-        Files.createDirectories(outRoot);
         Map<String, ContentPatterns> removePatternsMap =
                 ContentPatterns.fromFile(Paths.get("content-rules.txt"));
 
+        String name = sourceRoot.toFile().getName();
 
-        for (Path dir : dirs) {
+        List<Path> files = Lists.newArrayList(Files.walk(sourceRoot, 1)
+                .filter(path -> path.toFile().isFile()).iterator());
 
-            String name = dir.toFile().getName();
 
-            List<Path> files = Lists.newArrayList(Files.walk(dir, 1)
-                    .filter(path -> path.toFile().isFile()).iterator());
-            if (files.size() == 0) continue;
-
-            for (Path file : files) {
-                WebCorpus corpus = new WebCorpus(name, file.toFile().getName());
-                corpus.addDocuments(WebCorpus.loadDocuments(file));
-
-                Log.info(corpus);
-                Log.info("Total = %d ", corpus.getPages().size());
-
-                ContentPatterns patterns = removePatternsMap.get(name);
-                if (patterns == null) {
-                    Log.warn("No remove pattern found for " + name);
-                    patterns = new ContentPatterns();
-                }
-
-                corpus.saveReduced(patterns, outRoot, saveOnlyContent, true);
+        for (Path file : files) {
+            WebCorpus corpus = new WebCorpus(name, file.toFile().getName());
+            Path dir = outRoot.resolve(corpus.source);
+            Files.createDirectories(dir);
+            Path out = dir.resolve(corpus.id);
+            if (out.toFile().exists()) {
+                Log.info("%s Exists. skipping.", out);
+                continue;
             }
+            corpus.addDocuments(WebCorpus.loadDocuments(file));
+
+            Log.info(corpus);
+            Log.info("Total = %d ", corpus.getPages().size());
+
+            ContentPatterns patterns = removePatternsMap.get(name);
+            if (patterns == null) {
+                Log.warn("No remove pattern found for " + name);
+                patterns = new ContentPatterns();
+            }
+
+            List<WebDocument> reducedPages = corpus.getReducedPages(patterns, true);
+            corpus.removeAll();
+            corpus.addDocuments(reducedPages);
+            corpus.save(out, saveOnlyContent);
         }
+
     }
 
+
+    private static void stats(Path... dirs) throws IOException {
+        stats(Arrays.asList(dirs));
+    }
 
     private static void stats(List<Path> dirs) throws IOException {
         int total = 0, unique = 0;
