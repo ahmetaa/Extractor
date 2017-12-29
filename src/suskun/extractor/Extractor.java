@@ -38,15 +38,11 @@ public class Extractor {
         Path outRoot = Paths.get("/media/aaa/Data/corpora/news");
         Path sourcesList = Paths.get("news");
 
-        extractAll(inRoot, outRoot, sourcesList);
-/*
-        Extractor extractor = new Extractor();
-        extractor.extractFromSourceCrawls(
-                inRoot.resolve("www.uludagsozluk.com"), outRoot, 4 );
-                */
+        extractAll(inRoot, outRoot, sourcesList,-1 );
     }
 
-    private static void extractAll(Path inRoot, Path outRoot, Path sourcesList) throws IOException, InterruptedException {
+    private static void extractAll(Path inRoot, Path outRoot, Path sourcesList, int dayCount)
+            throws IOException, InterruptedException {
         Extractor e = new Extractor();
         List<Path> paths = TextUtil.loadLinesWithText(sourcesList)
                 .stream()
@@ -66,12 +62,12 @@ public class Extractor {
                     }
                 }).collect(Collectors.toList());
         e.sourcePaths = new LinkedHashSet<>(paths);
-        e.extract(outRoot, 4);
+        e.extract(outRoot, 4, dayCount);
     }
 
     static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 
-    private void extract(final Path outRoot, int threadCount)
+    private void extract(final Path outRoot, int threadCount, int dayCount)
             throws IOException, InterruptedException {
 
         for (Path sourceDir : sourcePaths) {
@@ -79,12 +75,12 @@ public class Extractor {
             if (!data.toFile().exists()) {
                 continue;
             }
-            extractFromSourceCrawls(sourceDir, outRoot, threadCount);
+            extractFromSourceCrawls(sourceDir, outRoot, threadCount, dayCount);
         }
     }
 
 
-    private void extractFromSourceCrawls(final Path sourceCrawlRoot, final Path outRoot, int threadCount)
+    private void extractFromSourceCrawls(final Path sourceCrawlRoot, final Path outRoot, int threadCount, int dayCount)
             throws IOException, InterruptedException {
 
         String sourceName = sourceCrawlRoot.toFile().getName();
@@ -95,6 +91,8 @@ public class Extractor {
                 .walk(data, 1)
                 .filter(s -> s.toFile().isDirectory())
                 .collect(Collectors.toList());
+        Collections.sort(crawlDayFolders);
+        Collections.reverse(crawlDayFolders);
 
         Log.info("There are %d crawl day folders for %s", crawlDayFolders.size(), sourceName);
 
@@ -102,6 +100,8 @@ public class Extractor {
         CompletionService<Path> service = new ExecutorCompletionService<>(es);
 
         int taskCounter = 0;
+
+        int dayCounter = 0;
 
         for (Path day : crawlDayFolders) {
 
@@ -126,11 +126,17 @@ public class Extractor {
             Log.info("Processing " + day + " to " + outFile);
 
             if (Files.notExists(outFile)) {
-                service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(sourceName), 500));
+                service.submit(new ExtractorTask(day, outFile, extractString, patterns.get(sourceName), 500, false));
                 taskCounter++;
             } else {
                 Log.warn("File %s exist, skipping.", outFile);
             }
+
+            dayCounter++;
+            if (dayCount > 0 && dayCounter > dayCount) {
+                break;
+            }
+
         }
         es.shutdown();
         try {
@@ -180,13 +186,15 @@ public class Extractor {
         String extractType;
         ContentPatterns patterns;
         int blockSize;
+        boolean extractMetaData;
 
-        ExtractorTask(Path inDir, Path outFile, String extractType, ContentPatterns patterns, int blockSize) {
+        ExtractorTask(Path inDir, Path outFile, String extractType, ContentPatterns patterns, int blockSize, boolean extractMetadata) {
             this.inDir = inDir;
             this.outFile = outFile;
             this.extractType = extractType;
             this.patterns = patterns;
             this.blockSize = blockSize;
+            this.extractMetaData = extractMetadata;
         }
 
         @Override
@@ -236,13 +244,15 @@ public class Extractor {
                 st = sw.elapsed(TimeUnit.MILLISECONDS);
                 for (FileContent fileContent : contents) {
                     String text = fileContent.content;
+                    text = text.replaceAll("\u00a0"," "); // replace evil space chars.
                     Path inFile = fileContent.path;
                     try {
-                        List<String> labels = (patterns != null && patterns.labelPattern != null) ?
+
+                        List<String> labels = (extractMetaData && patterns != null && patterns.labelPattern != null) ?
                                 extractLabels(text, patterns.labelPattern) : Collections.emptyList();
-                        String category = (patterns != null && patterns.categoryPattern != null) ?
+                        String category = (extractMetaData && patterns != null && patterns.categoryPattern != null) ?
                                 extractCategory(text, patterns.categoryPattern) : "";
-                        String title = (patterns != null && patterns.titlePattern != null) ?
+                        String title = (extractMetaData && patterns != null && patterns.titlePattern != null) ?
                                 extractTitle(text, patterns.titlePattern) : "";
 
                         text = pattern.matcher(text).replaceAll("<head><meta charset=\"UTF-8\"></head>");

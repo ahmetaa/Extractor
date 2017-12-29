@@ -55,6 +55,9 @@ L:[<]|[>]
 L:\[[0-9]+\]$
 L:\([0-9]+\)$
 L:\d{2}:\d{2}$
+L:\d{2}\.\d{2}\.\d{4}$
+L:^\d{2}[ ](Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)[ ]\d{4}
+L:\d{2}[ ](Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)[ ]\d{4}$
 L:http
 L:Tıkla İzle
 
@@ -115,11 +118,13 @@ I-:/u/
 
 
 www.haberturk.com
+E:ARTICLE
 I-:www\.haberturk\.com/secim
 I-:www\.haberturk\.com/spor/iddaa
 I-:m\.haberturk
 
 www.hurriyet.com.tr
+E:ARTICLE
 
 www.iha.com.tr
 I-:yazdir
@@ -140,7 +145,9 @@ I-:indir\.milliyet
 I-:arama
 I-:m\.milliyet
 E:ARTICLE
-L: Haberleri -
+L:Haberleri -
+L:Haberleri   -
+L:TIKLAYINIZ
 L:\( permalink \)
 
 www.ntv.com.tr
@@ -156,6 +163,10 @@ I-:m\.sabah
 I-:/yorum/
 I-:/secim/
 E:ARTICLE
+L:^Giriş Tarihi:
+L:adet ilan bulundu
+L:Yayın tarihi:
+L:Web adresi:
 
 www.sozcu.com.tr
 I-:amkspor
@@ -164,6 +175,8 @@ t24.com.tr
 LABEL:(<div>ETİKETLER</div>)(.+?)(</div>)
 I-:/etiketler
 I-:m\.t24\.com
+W:T24[ ]-
+RP:[ ]-[ ]\d{2}\.\d{2}\.\d{4}[ ]-[ ]|T24[ ]-[ ]|[ ]{4}->%n
 
 www.yenisafak.com
 LABEL:(<div class="tag-main">)(.+?)(</div>)
@@ -181,6 +194,7 @@ I-:www2
 
 www.bilim.org
 
+L:için bir cevap yazın$
 
 # -------- comments and reviews. -------------
 

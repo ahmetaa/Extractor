@@ -150,6 +150,34 @@ public class ContentPatterns {
         return result;
     }
 
+    public void applyReplacePatterns(WebDocument page) {
+        if (page.lines.size() == 0) {
+            return;
+        }
+        if (replaceWords.size() == 0 && replacePatterns.size() == 0) {
+            return;
+        }
+        List<String> lines = new ArrayList<>(page.getLines().size());
+        for (String line : page.lines) {
+            String content = line.replaceAll("\\s|\u00A0"," ");
+            for (String key : replaceWords.keySet()) {
+                content = content.replaceAll(key, replaceWords.get(key)).trim();
+            }
+            for (Pattern pattern : replacePatterns.keySet()) {
+                String s = replacePatterns.get(pattern);
+                content = pattern.matcher(content).reset().replaceAll(s);
+                // TODO: a hack.
+                content = content.replaceAll("%n", "\n");
+            }
+            if (content.contains("\n")) {
+                lines.addAll(Splitter.on("\n").omitEmptyStrings().trimResults().splitToList(content));
+            } else {
+                lines.add(content);
+            }
+        }
+        page.setContent(lines);
+    }
+
     public WebDocument reduce(
             WebDocument page,
             boolean removeDuplicates) {
