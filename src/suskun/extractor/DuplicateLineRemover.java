@@ -4,7 +4,9 @@ import com.google.common.collect.Lists;
 import com.google.common.hash.Hashing;
 import zemberek.core.collections.LongUIntMap;
 import zemberek.core.logging.Log;
+import zemberek.core.text.Regexps;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,11 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class DuplicateLineRemover {
 
-    LongUIntMap map1 = new LongUIntMap(10000000);
-    LongUIntMap map2 = new LongUIntMap(10000000);
+    LongUIntMap map1 = new LongUIntMap(10_000_000);
+    LongUIntMap map2 = new LongUIntMap(10_000_000);
 
     Locale locale = new Locale("Turkish");
     Map<String, ContentPatterns> contentPatternsMap;
@@ -26,15 +29,22 @@ public class DuplicateLineRemover {
         contentPatternsMap = ContentPatterns.fromFile(patternsPath);
     }
 
-    public void add(WebCorpus corpus) {
+    public void addForDuplicates(WebCorpus corpus) {
         ContentPatterns patterns = contentPatternsMap.get(corpus.source);
+        if (patterns == null) {
+            Log.info("No content patterns for [%s]", corpus.source);
+        }
+
+        int ignoredCount = 0;
 
         for (WebDocument document : corpus.getPages()) {
 
             if (patterns != null) {
                 patterns.applyReplacePatterns(document);
-            } else {
-                Log.info("No content patterns for [%s]", corpus.source);
+                if (!patterns.isUrlAccepted(document.url)) {
+                    ignoredCount++;
+                    continue;
+                }
             }
 
             for (String line : document.lines) {
@@ -51,6 +61,8 @@ public class DuplicateLineRemover {
                 map2.increment(hash2);
             }
         }
+        Log.info("Ignored count = %d", ignoredCount);
+
     }
 
     private long hash2(String line) {
@@ -61,16 +73,24 @@ public class DuplicateLineRemover {
         return Hashing.murmur3_128().hashBytes(line.getBytes()).asLong();
     }
 
-    public WebCorpus reduce(WebCorpus corpus) {
+    public WebCorpus reduceDuplicates(WebCorpus corpus) {
         ContentPatterns patterns = contentPatternsMap.get(corpus.source);
+        if (patterns == null) {
+            Log.info("No content patterns for [%s]", corpus.source);
+        }
 
+        int ignoredCount = 0;
         List<WebDocument> reducedDocs = new ArrayList<>(corpus.documentCount());
+
         for (WebDocument document : corpus.getPages()) {
 
             if (patterns != null) {
                 patterns.applyReplacePatterns(document);
-            } else {
-                Log.info("No content patterns for [%s]", corpus.source);
+                patterns.applyReplacePatterns(document);
+                if (!patterns.isUrlAccepted(document.url)) {
+                    ignoredCount++;
+                    continue;
+                }
             }
 
             List<String> reducedLines = new ArrayList<>();
@@ -103,6 +123,7 @@ public class DuplicateLineRemover {
                 reducedDocs.add(doc);
             }
         }
+        Log.info("Ignored count = %d", ignoredCount);
         return new WebCorpus(corpus.source, corpus.id, reducedDocs);
     }
 
@@ -136,12 +157,21 @@ public class DuplicateLineRemover {
 
             List<Path> files = Lists.newArrayList(Files.walk(corpusRoot, 1)
                     .filter(path -> path.toFile().isFile()).iterator());
+            Path outDir = outRoot.resolve(corpusRoot.toFile().getName());
+
             for (Path file : files) {
+
+                File outPath = outDir.resolve(file.toFile().getName()).toFile();
+                if (outPath.exists()) {
+                    Log.info("%s exits, skipping.", outPath);
+                    continue;
+                }
+
                 Log.info("Loading %s", file);
                 WebCorpus corpus = new WebCorpus(corpusRoot.toFile().getName(), file.toFile().getName());
                 corpus.addDocuments(WebCorpus.loadDocuments(file));
                 Log.info("Processing %s", corpus);
-                remover.add(corpus);
+                remover.addForDuplicates(corpus);
             }
         }
 
@@ -163,18 +193,22 @@ public class DuplicateLineRemover {
             Files.createDirectories(outDir);
 
             for (Path file : files) {
+                File outFile = outDir.resolve(file.toFile().getName()).toFile();
+                if (outFile.exists()) {
+                    Log.info("%s exits, skipping.", outFile);
+                    continue;
+                }
+
                 Log.info("Loading %s", file);
                 WebCorpus corpus = new WebCorpus(corpusRoot.toFile().getName(), file.toFile().getName());
                 corpus.addDocuments(WebCorpus.loadDocuments(file));
                 Log.info("Reducing %s", corpus);
-                WebCorpus reduced = remover.reduce(corpus);
+                WebCorpus reduced = remover.reduceDuplicates(corpus);
                 Log.info("Before lines = %d, After lines = %d", corpus.totalPageLineCount(), reduced.totalPageLineCount());
                 Log.info("Saving %s", corpus);
                 reduced.save(outDir.resolve(file.toFile().getName()), false);
             }
         }
-
     }
-
 
 }

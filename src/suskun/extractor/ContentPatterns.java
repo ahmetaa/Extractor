@@ -150,6 +150,18 @@ public class ContentPatterns {
         return result;
     }
 
+    // todo: add accept pattern check.
+    public boolean isUrlAccepted(String url) {
+        boolean accepted = true;
+        for (Pattern p : getUrlRemovePatterns()) {
+            if (Regexps.matchesAny(p, url)) {
+                accepted = false;
+                break;
+            }
+        }
+        return accepted;
+    }
+
     public void applyReplacePatterns(WebDocument page) {
         if (page.lines.size() == 0) {
             return;
@@ -159,7 +171,7 @@ public class ContentPatterns {
         }
         List<String> lines = new ArrayList<>(page.getLines().size());
         for (String line : page.lines) {
-            String content = line.replaceAll("\\s|\u00A0"," ");
+            String content = line.replaceAll("\\s|\u00A0", " ");
             for (String key : replaceWords.keySet()) {
                 content = content.replaceAll(key, replaceWords.get(key)).trim();
             }
@@ -246,7 +258,7 @@ public class ContentPatterns {
     public static String cleanAndNormalize(String input) {
         return TextUtil.cleanAllHtmlRelated(
                 TextUtil.normalizeQuotesHyphens(
-                        TextUtil.convertAmpresandStrings(
+                        TextUtil.convertAmpersandStrings(
                                 TextUtil.cleanCdataIllegalChars(input, " "))));
     }
 

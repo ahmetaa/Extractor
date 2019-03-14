@@ -15,8 +15,8 @@ public class Reducer {
 
     public static void main(String[] args) throws IOException {
 
-        Path sourceRoot = Paths.get("/media/aaa/Data/corpora/forum-test");
-        Path outRoot = Paths.get("/media/aaa/Data/corpora/forum-test-reduced");
+        Path sourceRoot = Paths.get("/media/aaa/Data/corpora/news-foo");
+        Path outRoot = Paths.get("/media/aaa/Data/corpora/news-foo-reduced");
         reduceAll(sourceRoot, outRoot, false);
 
     }

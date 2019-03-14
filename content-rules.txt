@@ -44,6 +44,8 @@ I-:newreply\.php
 I-:nick=
 I-:/etiket/
 
+P:[ÄÅÃ]
+
 L:devamını okumak için lütfen tıklayın
 L:Tüm hakları saklıdır
 L:iktibas edilemez
@@ -56,10 +58,12 @@ L:\[[0-9]+\]$
 L:\([0-9]+\)$
 L:\d{2}:\d{2}$
 L:\d{2}\.\d{2}\.\d{4}$
+L:\d{2}\/\d{2}\/\d{4}$
 L:^\d{2}[ ](Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)[ ]\d{4}
 L:\d{2}[ ](Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)[ ]\d{4}$
 L:http
 L:Tıkla İzle
+L:^\d{4} -
 
 test
 
@@ -103,6 +107,13 @@ E:ARTICLE
 LABEL:(<div class="tags">)(.+?)(</div>)
 I-:i\.dunya\.com
 I-:m\.dunya\.com
+W:^[A-ZŞÇĞİÜÖ]+[ ]+-[ ]+
+www.dunya.com
+I-:meteoroloji
+I-:ajax-nc
+I-:abone-ol
+I-:abone-giris
+I-:landing
 
 www.ensonhaber.com
 
@@ -135,14 +146,34 @@ LABEL:(<p>Etiketler:)(.+?)(</div>)
 I-:foto-
 I-:etiket-
 I-:/amp/
+I-:track\.php
+L:Yasal Uyarı
+L:Reklamı Geç
+L:Her Hakkı Saklıdır
+
 
 www.karar.com
+
+www.mynet.com
+I-:widget
+I-:email
+I-:mobil\.
+I-:m\.mynet
+I-:my\.mynet
+I-:cevaplar/
+I-:fesmekan\.
+I-:sinema\.
+
+
 
 www.milliyet.com.tr
 I-:ilan-detay
 I-:uyeno
+I-:Secim/
 I-:indir\.milliyet
+I-:oyunlar\.milliyet
 I-:arama
+I-:kap-haberi
 I-:m\.milliyet
 E:ARTICLE
 L:Haberleri -
@@ -186,6 +217,13 @@ I-:secim-
 I-:m\.yenisafak
 I-:/spor
 I-:assets
+L:YORUM YAP
+P:Son gelişmelerden anlık
+L:ÖNERİLEN VİDEOLAR
+L:OYNAT
+P:Windows
+L:FOTOĞRAF \d+
+L:paylaş$
 
 www.zaytung.com
 I-:store\.zaytung\.com
@@ -324,6 +362,7 @@ L:http
 L:soruyor:
 L:[*?]+H[*]
 L:İleti$
+L:\)$
 
 
 www.kizlarsoruyor.com
@@ -334,7 +373,8 @@ L:Ana Sayfa >
 L:Xper
 L:eig[ ]
 W:Daha Fazla
-W:#[^ ]+
+W:([ ]|^)#[^ ]+
+W:([ ]|^)@[^ ]+
 L:[0-9]+ EİG Seçildi
 L:[0-9]+ Geçerli Görüş
 L:Kızlar Ne Diyor [0-9]+
@@ -455,7 +495,16 @@ L:said:
 L:Quote Reply
 L:Konuyu açan:
 L:Params:
+W::[^ ]+:
+L:\]$
+L:^-[ ]\[
+L:başlatılmıştır\.$
+L:fragman$
+L:fragmanı$
+L:beğendi$
+L:started by
 L:^\d{4}-\d{2}-\d{2}
+
 
 mobile.donanimhaber.com
 
@@ -640,8 +689,11 @@ L:^Konu Sayısı:
 L:^Sponsor Link
 L:^Beğeniler:
 L:^Rep Puanı:
+L:^Toplam
+L:^@
 L:^Şehir:
 L:^RE:
+L:^[(]?\d{2}\/\d{2}\/\d{4}
 L:Konu Başlığı
 L:konusu$
 
@@ -696,10 +748,14 @@ E:EVERYTHING
 
 avlakforum.com
 I-:msg[0-9]+
+I-:profile
 L:^Gönderen
+L:^Sayfa:
+L:Üye ve
+L:^Ynt:
 L:Ziyaretçi,
 L:Son Düzenleme
-
+L:teşekkür eden üyeler
 E:EVERYTHING
 
 # auto
@@ -731,6 +787,9 @@ L:\[[0-9]+\]$
 L:\([0-9]+\)$
 L:http
 L:konuyu incelemekte
+L:Ad Soyad:
+L:Teşekkür eden üyeler
+L:Kayıt Ol
 L:Üye$
 L:^\[
 W::[^ ]+:
@@ -748,6 +807,7 @@ I-:forumdisplay
 I-:en\.hukuki\.net
 I-:/haber/
 I-:law\.hukuki
+I-:language=en
 I-:yabanci\.hukuki
 I-:/links/
 L:[<]|[>]
@@ -803,6 +863,9 @@ L:galeri [0-9]+
 L:video [0-9]+
 L:[0-9]+ dk önce$
 L:ulupuan$
+L:ile alakalı başlıklar$
+L:entry girilmemiş
+L:sözlük yazar
 
 
 www.incisozluk.com.tr
@@ -820,7 +883,8 @@ I-:/\?url/
 RW-E:huur->psptqv
 RW-E:giber->tjlfs
 RW-E:gibim->tjlfzjn
-RW-E:gibe->tjlm
+RW-E:gibe->tjlf
+RW-E:siklr->tjlfs
 RW-E:gibc->tjld
 RW-E:gibt->tjlu
 RW-E:gibm->tjln
@@ -843,6 +907,8 @@ RW:klagib->klasik
 RW:ekgib->eksik
 L:köle no
 L:\(bkz
+L:dk\.$
+L:^#
 W:edit [0-9]+
 
 # commerce reviews
@@ -887,4 +953,13 @@ I-:/etiket/
 L:Facebook'ta Paylaş
 L:Şikayet Et$
 L:Takip Et$
+L:\d{2}:\d{2}$
+
+www.aljazeera.com.tr
+I-:mobile\.aljazeera
+I-:page=[0-9]+$
+E:EVERYTHING
+L:\d{4} Güncelleme
+L:]$
+L:^Kaynak:
 

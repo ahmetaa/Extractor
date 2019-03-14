@@ -1,6 +1,7 @@
 package suskun.extractor;
 
 import com.google.common.hash.Hashing;
+import zemberek.core.collections.LongUIntMap;
 import zemberek.core.logging.Log;
 import zemberek.core.text.TextConsumer;
 
@@ -30,20 +31,63 @@ public class WebCorpus {
     }
 
     //TODO: this may be lossy.
-    public WebCorpus copyNoDuplicates() {
+    public WebCorpus copyNoDuplicates(int lengthThreshold) {
         Set<Long> hashes = new HashSet<>();
         WebCorpus noDup = new WebCorpus(this.source, this.id);
         for (WebDocument doc : pages) {
+            doc.removeDuplicateLines();
             if (hashes.contains(doc.getHash())) {
                 continue;
             }
-            if (doc.contentLength() < 50) {
+            if (doc.contentLength() < lengthThreshold) {
                 continue;
             }
             hashes.add(doc.getHash());
             noDup.addDocument(doc);
         }
         return noDup;
+    }
+
+    public WebCorpus eliminateDuplicateLines() {
+        LongUIntMap hashes = new LongUIntMap(10_000_000);
+        WebCorpus noDup = new WebCorpus(this.source, this.id);
+        for (WebDocument doc : pages) {
+            for (String line : doc.lines) {
+                if (line.length() == 0) {
+                    continue;
+                }
+                hashes.increment(Hashing.murmur3_128().hashBytes(line.getBytes()).asLong());
+            }
+        }
+        for (WebDocument doc : pages) {
+            List<String> reducedLines = new ArrayList<>();
+            for (String line : doc.lines) {
+                if (line.length() == 0) {
+                    continue;
+                }
+                long hash = Hashing.murmur3_128().hashBytes(line.getBytes()).asLong();
+                int count = hashes.get(hash);
+                if(count>1) {
+                    hashes.decrement(hash);
+                } else {
+                    reducedLines.add(line);
+                }
+            }
+            doc.setContent(reducedLines);
+            noDup.addDocument(doc);
+        }
+        return noDup;
+    }
+
+    public void eliminateDuplicatesInPlace() {
+        WebCorpus noDup = eliminateDuplicateLines();
+        this.pages = noDup.pages;
+        this.lookup = noDup.lookup;
+    }
+
+    public void clear() {
+        this.pages.clear();
+        this.lookup.clear();
     }
 
     public WebDocument getDocument(String id) {

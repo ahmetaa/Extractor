@@ -11,7 +11,6 @@ import zemberek.core.text.Regexps;
 import zemberek.core.text.TextUtil;
 
 import java.io.*;
-import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
@@ -35,34 +34,17 @@ public class Extractor {
     public static void main(String[] args) throws IOException, InterruptedException {
 
         Path inRoot = Paths.get("/media/aaa/Data/crawl/news");
-        Path outRoot = Paths.get("/media/aaa/Data/corpora/news");
-        Path sourcesList = Paths.get("news");
+        Path outRoot = Paths.get("/media/aaa/Data/corpora/news-foo");
+        Path sourcesList = Paths.get("test");
 
-        extractAll(inRoot, outRoot, sourcesList,-1 );
+        extractAll(inRoot, outRoot, 8, sourcesList,-1 );
     }
 
-    private static void extractAll(Path inRoot, Path outRoot, Path sourcesList, int dayCount)
+    private static void extractAll(Path inRoot, Path outRoot, int threadCount, Path sourcesList, int dayCount)
             throws IOException, InterruptedException {
         Extractor e = new Extractor();
-        List<Path> paths = TextUtil.loadLinesWithText(sourcesList)
-                .stream()
-                .filter(s -> !s.trim().startsWith("#") && s.trim().length() > 0)
-                .map((s) -> {
-                    try {
-                        if (!s.startsWith("http")) {
-                            s = ("http://" + s);
-                        }
-                        URI uri = new URI(s);
-                        Log.info(uri.getHost());
-                        return inRoot.resolve(uri.getHost());
-                    } catch (Exception exception) {
-                        exception.printStackTrace();
-                        System.exit(-1);
-                        return null;
-                    }
-                }).collect(Collectors.toList());
-        e.sourcePaths = new LinkedHashSet<>(paths);
-        e.extract(outRoot, 4, dayCount);
+        e.sourcePaths = new LinkedHashSet<>(Scripts.loadSourcePaths(inRoot, sourcesList));
+        e.extract(outRoot, threadCount, dayCount);
     }
 
     static final Pattern DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
@@ -79,9 +61,8 @@ public class Extractor {
         }
     }
 
-
     private void extractFromSourceCrawls(final Path sourceCrawlRoot, final Path outRoot, int threadCount, int dayCount)
-            throws IOException, InterruptedException {
+            throws IOException {
 
         String sourceName = sourceCrawlRoot.toFile().getName();
 
@@ -89,7 +70,7 @@ public class Extractor {
 
         List<Path> crawlDayFolders = Files
                 .walk(data, 1)
-                .filter(s -> s.toFile().isDirectory())
+                .filter(s -> s.toFile().isDirectory() && !s.equals(data))
                 .collect(Collectors.toList());
         Collections.sort(crawlDayFolders);
         Collections.reverse(crawlDayFolders);
@@ -106,7 +87,8 @@ public class Extractor {
         for (Path day : crawlDayFolders) {
 
             // make sure we are processing correct folders.
-            if (!DATE.matcher(day.toFile().getName()).matches()) {
+            String dateString = day.toFile().getName();
+            if (!DATE.matcher(dateString).matches()) {
                 Log.warn("Incorrect folder name: %s. A Date pattern is expected.", day);
                 continue;
             }
@@ -121,7 +103,7 @@ public class Extractor {
 
             Files.createDirectories(outDir);
 
-            Path outFile = outDir.resolve(day.toFile().getName());
+            Path outFile = outDir.resolve(dateString);
 
             Log.info("Processing " + day + " to " + outFile);
 
@@ -188,7 +170,12 @@ public class Extractor {
         int blockSize;
         boolean extractMetaData;
 
-        ExtractorTask(Path inDir, Path outFile, String extractType, ContentPatterns patterns, int blockSize, boolean extractMetadata) {
+        ExtractorTask(Path inDir,
+                      Path outFile,
+                      String extractType,
+                      ContentPatterns patterns,
+                      int blockSize,
+                      boolean extractMetadata) {
             this.inDir = inDir;
             this.outFile = outFile;
             this.extractType = extractType;
@@ -206,6 +193,7 @@ public class Extractor {
 
             // load all paths in the directory.
             List<Path> paths = getPaths();
+            Collections.sort(paths);
             if (paths == null) return null;
 
             int count = 0;
@@ -244,10 +232,10 @@ public class Extractor {
                 st = sw.elapsed(TimeUnit.MILLISECONDS);
                 for (FileContent fileContent : contents) {
                     String text = fileContent.content;
-                    text = text.replaceAll("\u00a0"," "); // replace evil space chars.
+                    //TODO: add more evil chars
+                    text = text.replaceAll("\\u00a0"," "); // replace evil space chars.
                     Path inFile = fileContent.path;
                     try {
-
                         List<String> labels = (extractMetaData && patterns != null && patterns.labelPattern != null) ?
                                 extractLabels(text, patterns.labelPattern) : Collections.emptyList();
                         String category = (extractMetaData && patterns != null && patterns.categoryPattern != null) ?
@@ -360,7 +348,7 @@ public class Extractor {
             if (labelChunk == null || labelChunk.trim().length() == 0) {
                 return Collections.emptyList();
             }
-            labelChunk = TextUtil.convertAmpresandStrings(labelChunk);
+            labelChunk = TextUtil.convertAmpersandStrings(labelChunk);
             List<String> labels;
             if (labelChunk.contains("<a href")) {
                 labels = Splitter.on(labelSplitPatternHref).omitEmptyStrings().trimResults().splitToList(labelChunk);
@@ -379,7 +367,7 @@ public class Extractor {
             if (category == null) {
                 return "";
             }
-            return TextUtil.convertAmpresandStrings(category);
+            return TextUtil.convertAmpersandStrings(category);
         }
 
         private String extractTitle(String text, Pattern pattern) {
@@ -387,7 +375,7 @@ public class Extractor {
             if (title == null) {
                 return "";
             }
-            return TextUtil.convertAmpresandStrings(title);
+            return TextUtil.convertAmpersandStrings(title);
         }
     }
 }
